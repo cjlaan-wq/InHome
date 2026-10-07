@@ -56,6 +56,8 @@ export type Fix = {
   title: string;
   steps: string[];
   cta?: { label: string; href: string };
+  /** Laat de oplossing live zien in de scène (bijv. een SuperWifi-punt neerzetten). */
+  demo?: 'extender';
 };
 
 export type VisualEffect = 'blocked' | 'slow' | 'weak-signal' | 'device-only';
@@ -66,11 +68,17 @@ export type Issue = {
   symptom: string; // herkenbaar symptoom in één zin
   connectionTypes: ConnectionType[];
   affectedNodes: NodeId[];
+  /** Alleen deze apparaten zijn betrokken (bij 'devices' in affectedNodes). Leeg/ontbreekt = alle. */
+  affectedParts?: DeviceId[];
   affectedLinks: string[];
   visualEffect: VisualEffect;
   steps: IssueStep[];
+  /** Waar de camera naartoe gaat bij de oplossingen. Standaard: het onderdeel van de laatste stap. */
+  fixesFocusNodeId?: NodeId;
   fixes: Fix[];
   escalation: { label: string; href: string };
+  /** Concepttekst die nog door KPN Service gevalideerd moet worden. */
+  draft?: boolean;
 };
 
 /** Helper om een link-id consistent op te bouwen. */

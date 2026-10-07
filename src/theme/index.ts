@@ -5,8 +5,11 @@ export const colors = {
   kpnGreen: '#00C300',
   kpnGreenDark: '#008A00', // voor tekst op wit (voldoende contrast)
   warning: '#F28C28',
+  warningDark: '#A84E00', // voor tekst/iconen en witte tekst op oranje (voldoende contrast)
+  warningSoft: '#FFF1E5',
   error: '#E5412D',
   dimmed: '#B8BEC6',
+  dimmedSurface: '#E6E9EC', // waar gedimde onderdelen naartoe vervagen
 
   // Scène
   sceneBackground: '#EEF2F5',
@@ -16,6 +19,7 @@ export const colors = {
   copperCable: '#C9793A',
   indoorCable: '#9AA3AC',
   packet: '#7DFF6E',
+  packetProblem: '#FF8A1F',
   wifiRing: '#00C300',
 
   building: '#FFFFFF',
@@ -50,4 +54,5 @@ export const timings = {
   packetSpacing: 1.6, // afstand tussen pakketjes
   dslPacketSpeedFactor: 0.55, // koper is trager dan glas
   wifiPulse: 2.4, // s per uitdijende ring
+  issuePulse: 3.2, // rad/s, pulseren van betrokken onderdelen
 } as const;

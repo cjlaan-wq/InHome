@@ -1,12 +1,15 @@
 import { useMemo } from 'react';
+import * as THREE from 'three';
 import { getActiveNodes, getLinks } from '../content';
 import { useAppStore } from '../state/store';
 import { usePrefersReducedMotion } from '../app/hooks';
+import { Highlight, IssuePulse, variant } from './Highlight';
 import { Hotspots } from './Hotspots';
 import { Labels } from './Labels';
-import { cableColorKey, decorCables, nodePositions, resolvePaths } from './layout';
+import { cableColorKey, decorCables, nodePositions, resolvePaths, type Vec3 } from './layout';
 import { Cable } from './links/Cable';
 import { Packets } from './links/Packets';
+import { ProblemMarker } from './links/ProblemMarker';
 import { materials } from './materials';
 import { Backbone } from './nodes/Backbone';
 import { Devices } from './nodes/Devices';
@@ -18,13 +21,14 @@ import { Modem } from './nodes/Modem';
 import { Neighborhood } from './nodes/Neighborhood';
 import { StreetCabinet } from './nodes/StreetCabinet';
 import { WifiSignal } from './nodes/WifiSignal';
-import * as THREE from 'three';
+import { useIssueScene } from './useIssueScene';
 
-/** De volledige keten van KPN tot apparaat. */
+/** De volledige keten van KPN tot apparaat, inclusief de probleemweergave. */
 export function NetworkChain() {
   const connectionType = useAppStore((s) => s.connectionType);
   const hasExtender = useAppStore((s) => s.hasExtender);
   const animate = !usePrefersReducedMotion();
+  const scene = useIssueScene();
 
   const nodes = useMemo(() => getActiveNodes(connectionType, hasExtender), [connectionType, hasExtender]);
   const paths = useMemo(
@@ -35,28 +39,63 @@ export function NetworkChain() {
       ),
     [connectionType, hasExtender],
   );
-  const decor = useMemo(() => decorCables.map((points) => new THREE.CatmullRomCurve3(points.map((p) => new THREE.Vector3(...p)))), []);
+  const behaviours = useMemo(() => paths.map(scene.behaviour), [paths, scene]);
+  const decor = useMemo(
+    () => decorCables.map((points) => new THREE.CatmullRomCurve3(points.map((p) => new THREE.Vector3(...p)))),
+    [],
+  );
+  // Plekken waar pakketjes stranden, voor de probleemmarkering.
+  const markers = useMemo(
+    () =>
+      paths.flatMap((path, i) => {
+        const b = behaviours[i];
+        if (b.kind !== 'stop') return [];
+        const p = path.curve.getPointAt(b.stopAt);
+        // Kleiner bij dunne binnenkabels en in de lucht, waar de camera dichterbij komt.
+        const scale = path.cable === 'indoor' ? 0.45 : path.medium === 'air' ? 0.6 : 1;
+        return [
+          { key: `${path.linkId}-${path.deviceId ?? ''}`, position: [p.x, p.y + 0.35 * scale, p.z] as Vec3, scale },
+        ];
+      }),
+    [paths, behaviours],
+  );
+
+  const { nodeStatus, linkStatus, contextStatus } = scene;
 
   return (
     <group>
-      <Neighborhood />
-      <KpnCore position={nodePositions['kpn-core']} />
-      <Backbone position={nodePositions.backbone} />
-      <StreetCabinet position={nodePositions['street-cabinet']} />
-      <House />
-      <HouseConnection position={nodePositions['house-connection']} type={connectionType} />
-      <Modem position={nodePositions.modem} />
-      <WifiSignal position={nodePositions.wifi} radius={6.5} animate={animate} />
+      <Highlight status={contextStatus}>
+        <Neighborhood />
+        <House />
+      </Highlight>
+      <Highlight status={nodeStatus('kpn-core')}>
+        <KpnCore position={nodePositions['kpn-core']} />
+      </Highlight>
+      <Highlight status={nodeStatus('backbone')}>
+        <Backbone position={nodePositions.backbone} />
+      </Highlight>
+      <Highlight status={nodeStatus('street-cabinet')}>
+        <StreetCabinet position={nodePositions['street-cabinet']} />
+      </Highlight>
+      <Highlight status={nodeStatus('house-connection')}>
+        <HouseConnection position={nodePositions['house-connection']} type={connectionType} />
+      </Highlight>
+      <Highlight status={nodeStatus('modem')}>
+        <Modem position={nodePositions.modem} />
+      </Highlight>
+      <WifiSignal position={nodePositions.wifi} radius={6.5} animate={animate} status={nodeStatus('wifi')} />
       {hasExtender && (
         <>
-          <Extender position={nodePositions.extender} />
-          <WifiSignal position={nodePositions.extender} radius={4} animate={animate} />
+          <Highlight status={nodeStatus('extender')}>
+            <Extender position={nodePositions.extender} />
+          </Highlight>
+          <WifiSignal position={nodePositions.extender} radius={4} animate={animate} status={nodeStatus('extender')} />
         </>
       )}
-      <Devices />
+      <Devices statusOf={scene.partStatus} />
 
       {decor.map((curve, i) => (
-        <Cable key={i} curve={curve} material={materials.cable.decor} radius={0.05} />
+        <Cable key={i} curve={curve} material={variant(materials.cable.decor, contextStatus)} radius={0.05} />
       ))}
       {paths
         .filter((path) => path.medium === 'cable')
@@ -64,14 +103,18 @@ export function NetworkChain() {
           <Cable
             key={`${path.linkId}-${connectionType}`}
             curve={path.curve}
-            material={materials.cable[cableColorKey(path.cable!, connectionType)]}
+            material={variant(materials.cable[cableColorKey(path.cable!, connectionType)], linkStatus(path.linkId))}
             radius={path.cable === 'indoor' ? 0.03 : 0.07}
           />
         ))}
-      <Packets paths={paths} connectionType={connectionType} animate={animate} />
+      <Packets paths={paths} behaviours={behaviours} connectionType={connectionType} animate={animate} />
+      {markers.map((marker) => (
+        <ProblemMarker key={marker.key} position={marker.position} scale={marker.scale} animate={animate} />
+      ))}
+      {scene.issue && <IssuePulse animate={animate} />}
 
       <Hotspots activeNodeIds={nodes.map((node) => node.id)} />
-      <Labels nodes={nodes} />
+      <Labels nodes={nodes} nodeStatus={nodeStatus} partStatus={scene.partStatus} />
     </group>
   );
 }

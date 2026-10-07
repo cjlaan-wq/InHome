@@ -2,6 +2,7 @@ import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { colors, timings } from '../../theme';
+import type { Status } from '../Highlight';
 import type { Vec3 } from '../layout';
 
 const ringCount = 3;
@@ -13,10 +14,13 @@ type Props = {
   /** Bereik in scène-eenheden. */
   radius: number;
   animate: boolean;
+  status?: Status;
 };
 
+const statusColor: Record<Status, string> = { normal: colors.wifiRing, affected: colors.warning, dimmed: colors.dimmed };
+
 /** Wifi als zacht uitdijende ringen plus een vage koepel die het bereik laat zien. */
-export function WifiSignal({ position, radius, animate }: Props) {
+export function WifiSignal({ position, radius, animate, status = 'normal' }: Props) {
   const rings = useRef<THREE.Mesh[]>([]);
   const ringMaterials = useMemo(
     () =>
@@ -50,11 +54,15 @@ export function WifiSignal({ position, radius, animate }: Props) {
       const progress = animate ? (time / timings.wifiPulse + i / ringCount) % 1 : (i + 1) / (ringCount + 1);
       const scale = 0.3 + progress * (radius - 0.3);
       ring.scale.set(scale, 1, scale);
-      ringMaterials[i].opacity = 0.55 * (1 - progress) ** 1.5;
+      ringMaterials[i].opacity = (status === 'dimmed' ? 0.25 : 0.55) * (1 - progress) ** 1.5;
     });
   };
 
   useFrame(({ clock }) => place(clock.elapsedTime));
+
+  // Kleur volgt de status (gezond groen, probleem oranje, gedimd grijs).
+  ringMaterials.forEach((m) => m.color.set(statusColor[status]));
+  volumeMaterial.color.set(statusColor[status]);
 
   return (
     <group position={position}>

@@ -1,4 +1,4 @@
-import type { ConnectionType } from './types';
+import type { ConnectionType, Issue, NodeId } from './types';
 import { nodes } from './nodes';
 import { links } from './links';
 import { issues } from './issues';
@@ -21,3 +21,14 @@ export const getLinks = (type: ConnectionType, hasExtender = true) =>
   links.filter(appliesTo(type)).filter((link) => hasExtender || (link.from !== 'extender' && link.to !== 'extender'));
 
 export const getIssues = (type: ConnectionType) => issues.filter(appliesTo(type));
+
+export const getIssue = (id: string | null) => issues.find((issue) => issue.id === id);
+
+/** Aantal stappen in de probleemmodus: de uitlegstappen plus één stap met de oplossingen. */
+export const issueStepCount = (issue: Issue) => issue.steps.length + 1;
+
+/** Onderdeel waar de camera bij een stap naartoe gaat. */
+export const issueStepFocus = (issue: Issue, step: number): NodeId =>
+  step < issue.steps.length
+    ? issue.steps[step].focusNodeId
+    : (issue.fixesFocusNodeId ?? issue.steps[issue.steps.length - 1].focusNodeId);

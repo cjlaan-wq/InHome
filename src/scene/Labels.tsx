@@ -3,6 +3,8 @@ import { useThree } from '@react-three/fiber';
 import type { NetworkNode, NodeId, DeviceId } from '../content/types';
 import { t } from '../i18n';
 import { useAppStore, type Hovered } from '../state/store';
+import { WarningIcon } from '../ui/Icons';
+import type { Status } from './Highlight';
 import { compactLabelNodes, devicePositions, focusedLabelOffset, labelOffset, nodePositions, type Vec3 } from './layout';
 
 /** Onder deze canvasbreedte tonen we alleen de hoofdlabels, anders overlappen ze in het huis. */
@@ -17,13 +19,21 @@ type LabelProps = {
   target: Hovered;
   active: boolean;
   hovered: boolean;
+  status: Status;
+};
+
+const labelStyle = (status: Status, active: boolean) => {
+  if (status === 'affected')
+    return active ? 'bg-warning-dark text-white ring-warning-dark' : 'bg-warning-soft text-ink ring-warning';
+  if (active) return 'bg-kpn-green-dark text-white ring-kpn-green-dark';
+  return status === 'dimmed' ? 'bg-surface/80 text-ink-muted ring-line' : 'bg-surface/95 text-ink ring-line';
 };
 
 /**
  * Label in de scène; bij hoveren klapt het uit tot een tooltip. Ook klikbaar, als groot
  * tikdoel op mobiel. Niet in de tabvolgorde: het paneel is de toetsenbordroute.
  */
-function Label({ position, text, tooltip, target, active, hovered }: LabelProps) {
+function Label({ position, text, tooltip, target, active, hovered, status }: LabelProps) {
   const setHovered = useAppStore((s) => s.setHovered);
   const focusNode = useAppStore((s) => s.focusNode);
 
@@ -36,15 +46,20 @@ function Label({ position, text, tooltip, target, active, hovered }: LabelProps)
         onPointerEnter={() => setHovered(target)}
         onPointerLeave={() => setHovered(null)}
         onClick={() => focusNode(target.nodeId)}
-        className={`pointer-events-auto block cursor-pointer whitespace-nowrap rounded-2xl px-2.5 py-1 text-left text-xs font-medium shadow-sm ring-1 transition-colors ${
-          active ? 'bg-kpn-green-dark text-white ring-kpn-green-dark' : 'bg-surface/95 text-ink ring-line'
-        }`}
+        className={`pointer-events-auto block cursor-pointer whitespace-nowrap rounded-2xl px-2.5 py-1 text-left text-xs font-medium shadow-sm ring-1 transition-colors ${labelStyle(status, active)}`}
       >
-        {text}
+        <span className="flex items-center gap-1">
+          {status === 'affected' && <WarningIcon className={`size-3.5 ${active ? 'text-white' : 'text-warning-dark'}`} />}
+          {text}
+        </span>
         {hovered && (
           <span className={`block w-max max-w-52 whitespace-normal font-normal ${active ? 'text-white' : 'text-ink-muted'}`}>
             {tooltip}
-            {!active && <span className="mt-0.5 block text-kpn-green-dark">{t('tooltip.more')} →</span>}
+            {!active && (
+              <span className={`mt-0.5 block ${status === 'affected' ? 'text-warning-dark' : 'text-kpn-green-dark'}`}>
+                {t('tooltip.more')} →
+              </span>
+            )}
           </span>
         )}
       </button>
@@ -53,16 +68,27 @@ function Label({ position, text, tooltip, target, active, hovered }: LabelProps)
 }
 
 /** Korte labels in de scène. De teksten komen uit de content (incl. varianten per verbindingstype). */
-export function Labels({ nodes }: { nodes: NetworkNode[] }) {
+type LabelsProps = {
+  nodes: NetworkNode[];
+  nodeStatus: (id: NodeId) => Status;
+  partStatus: (id: DeviceId) => Status;
+};
+
+export function Labels({ nodes, nodeStatus, partStatus }: LabelsProps) {
   const compact = useThree((s) => s.size.width < compactWidth);
   const hovered = useAppStore((s) => s.hovered);
   const focusNodeId = useAppStore((s) => s.focusNodeId);
 
   const isHovered = (nodeId: NodeId, partId?: DeviceId) =>
     hovered?.nodeId === nodeId && (partId === undefined || hovered.partId === undefined || hovered.partId === partId);
-  // Op een smal scherm: alleen hoofdlabels, plus het onderdeel waar je mee bezig bent.
+  // Op een smal scherm: alleen hoofdlabels, plus het onderdeel waar je mee bezig bent en betrokken onderdelen.
   const visible = nodes.filter(
-    (node) => !compact || compactLabelNodes.includes(node.id) || node.id === focusNodeId || hovered?.nodeId === node.id,
+    (node) =>
+      !compact ||
+      compactLabelNodes.includes(node.id) ||
+      node.id === focusNodeId ||
+      hovered?.nodeId === node.id ||
+      nodeStatus(node.id) === 'affected',
   );
 
   return (
@@ -78,6 +104,7 @@ export function Labels({ nodes }: { nodes: NetworkNode[] }) {
               target={{ nodeId: node.id, partId: part.id }}
               active={focusNodeId === node.id}
               hovered={isHovered(node.id, part.id)}
+              status={partStatus(part.id)}
             />
           ))
         ) : (
@@ -92,6 +119,7 @@ export function Labels({ nodes }: { nodes: NetworkNode[] }) {
             target={{ nodeId: node.id }}
             active={focusNodeId === node.id}
             hovered={isHovered(node.id)}
+            status={nodeStatus(node.id)}
           />
         ),
       )}

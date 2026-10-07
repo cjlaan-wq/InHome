@@ -23,20 +23,29 @@ function Stage() {
   );
 }
 
-/** Escape: terug naar het overzicht. */
-function useEscapeToOverview() {
-  const focusNode = useAppStore((s) => s.focusNode);
+const isTyping = (target: EventTarget | null) =>
+  target instanceof HTMLElement && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName));
+
+/** Sneltoetsen: Escape terug naar het overzicht; ← → door de stappen van een probleem. */
+function useKeyboardShortcuts() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && useAppStore.getState().focusNodeId) focusNode(null);
+      if (isTyping(e.target) || e.altKey || e.ctrlKey || e.metaKey) return;
+      const state = useAppStore.getState();
+      if (e.key === 'Escape') {
+        if (state.mode === 'issue') state.backToExplore();
+        else if (state.focusNodeId) state.focusNode(null);
+      } else if (state.mode === 'issue' && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
+        state.setStep(state.activeStep + (e.key === 'ArrowRight' ? 1 : -1));
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [focusNode]);
+  }, []);
 }
 
 export function App() {
-  useEscapeToOverview();
+  useKeyboardShortcuts();
   return (
     // Framer-motion respecteert prefers-reduced-motion voor alle UI-overgangen.
     <MotionConfig reducedMotion="user">

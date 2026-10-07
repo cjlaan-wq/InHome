@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { getIssue, issueStepCount, issueStepFocus } from '../content';
 import type { ConnectionType, DeviceId, NodeId } from '../content/types';
 
 export type Mode = 'explore' | 'issue';
@@ -36,14 +37,28 @@ export const useAppStore = create<AppState>((set) => ({
   hovered: null,
 
   setConnectionType: (connectionType) =>
-    // Een ander verbindingstype kan andere problemen hebben; begin opnieuw met verkennen.
-    set({ connectionType, mode: 'explore', selectedIssueId: null, activeStep: 0 }),
+    set((s) => {
+      // Geldt het gekozen probleem niet voor dit verbindingstype? Dan terug naar verkennen.
+      const issue = getIssue(s.selectedIssueId);
+      if (s.mode === 'issue' && issue?.connectionTypes.includes(connectionType)) return { connectionType };
+      return { connectionType, mode: 'explore', selectedIssueId: null, activeStep: 0 };
+    }),
   setHasExtender: (hasExtender) =>
     // Zonder SuperWifi-punt valt de focus erop weg.
     set((s) => ({ hasExtender, focusNodeId: !hasExtender && s.focusNodeId === 'extender' ? null : s.focusNodeId })),
   focusNode: (focusNodeId) => set({ focusNodeId }),
   setHovered: (hovered) => set({ hovered }),
-  selectIssue: (selectedIssueId) => set({ mode: 'issue', selectedIssueId, activeStep: 0 }),
-  setStep: (activeStep) => set({ activeStep }),
+  selectIssue: (selectedIssueId) => {
+    const issue = getIssue(selectedIssueId);
+    if (!issue) return;
+    set({ mode: 'issue', selectedIssueId, activeStep: 0, focusNodeId: issueStepFocus(issue, 0), hovered: null });
+  },
+  setStep: (step) =>
+    set((s) => {
+      const issue = getIssue(s.selectedIssueId);
+      if (!issue) return {};
+      const activeStep = Math.max(0, Math.min(issueStepCount(issue) - 1, step));
+      return { activeStep, focusNodeId: issueStepFocus(issue, activeStep) };
+    }),
   backToExplore: () => set({ mode: 'explore', selectedIssueId: null, activeStep: 0, focusNodeId: null }),
 }));

@@ -2,6 +2,7 @@ import type { DeviceId } from '../../content/types';
 import { devicePositions, type Vec3 } from '../layout';
 import { materials } from '../materials';
 import { Block } from '../primitives';
+import { Highlight, type Status } from '../Highlight';
 
 function Laptop({ position }: { position: Vec3 }) {
   return (
@@ -44,12 +45,16 @@ const components: Record<DeviceId, (props: { position: Vec3 }) => React.JSX.Elem
 };
 
 /** Apparaten: elk apparaat is een eigen subonderdeel, zodat het los uitgelicht kan worden. */
-export function Devices() {
+export function Devices({ statusOf }: { statusOf: (id: DeviceId) => Status }) {
   return (
     <>
       {(Object.keys(devicePositions) as DeviceId[]).map((id) => {
         const Device = components[id];
-        return <Device key={id} position={devicePositions[id]} />;
+        return (
+          <Highlight key={id} status={statusOf(id)}>
+            <Device position={devicePositions[id]} />
+          </Highlight>
+        );
       })}
     </>
   );

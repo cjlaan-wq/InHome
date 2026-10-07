@@ -10,9 +10,25 @@ export const colors = {
 
   // Scène
   sceneBackground: '#EEF2F5',
-  ground: '#E2E8EE',
+  ground: '#F7F9FA',
+  groundPath: '#E4E9ED',
   fiberCable: '#00C300',
   copperCable: '#C9793A',
+  indoorCable: '#9AA3AC',
+  packet: '#7DFF6E',
+  wifiRing: '#00C300',
+
+  building: '#FFFFFF',
+  buildingShade: '#DDE3E8',
+  wall: '#F3F5F7',
+  floor: '#E8E2D8',
+  roof: '#C5CDD5',
+  cabinet: '#7F938A',
+  furniture: '#D3D8DD',
+  fabric: '#AFC3D6',
+  device: '#2B3138',
+  screen: '#3D4B5A',
+  ledOn: '#00C300',
 
   // UI
   text: '#1A1F24',
@@ -30,5 +46,8 @@ export const layout = {
 export const timings = {
   cameraFlight: 1.0, // s (≈0,8–1,2 s)
   uiTransition: 0.25, // s
-  packetSpeed: 1.0, // relatief
+  packetSpeed: 3.2, // scène-eenheden per seconde
+  packetSpacing: 1.6, // afstand tussen pakketjes
+  dslPacketSpeedFactor: 0.55, // koper is trager dan glas
+  wifiPulse: 2.4, // s per uitdijende ring
 } as const;

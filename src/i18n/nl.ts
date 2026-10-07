@@ -6,6 +6,7 @@ export const nl = {
   'connection.label': 'Jouw verbinding',
   'connection.fiber': 'Glasvezel',
   'connection.dsl': 'DSL (koper)',
+  'extender.toggle': 'Ik heb een SuperWifi-punt',
   'issues.heading': 'Wat is er aan de hand?',
   'issues.empty': 'De problemen worden binnenkort toegevoegd.',
   'nodes.heading': 'Onderdelen van je verbinding',

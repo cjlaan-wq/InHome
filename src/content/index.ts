@@ -13,6 +13,11 @@ const appliesTo = (type: ConnectionType) => (item: { connectionTypes: Connection
 export const getNodes = (type: ConnectionType) =>
   nodes.filter(appliesTo(type)).map((node) => ({ ...node, ...node.variants?.[type] }));
 
-export const getLinks = (type: ConnectionType) => links.filter(appliesTo(type));
+/** Optionele onderdelen (SuperWifi) en hun verbindingen tellen alleen mee als de klant ze heeft. */
+export const getActiveNodes = (type: ConnectionType, hasExtender: boolean) =>
+  getNodes(type).filter((node) => !node.optional || hasExtender);
+
+export const getLinks = (type: ConnectionType, hasExtender = true) =>
+  links.filter(appliesTo(type)).filter((link) => hasExtender || (link.from !== 'extender' && link.to !== 'extender'));
 
 export const getIssues = (type: ConnectionType) => issues.filter(appliesTo(type));

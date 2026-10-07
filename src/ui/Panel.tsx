@@ -1,15 +1,17 @@
-import { getIssues, getNodes } from '../content';
+import { getActiveNodes, getIssues } from '../content';
 import { t } from '../i18n';
 import { useAppStore } from '../state/store';
 import { ConnectionToggle } from './ConnectionToggle';
+import { ExtenderToggle } from './ExtenderToggle';
 
 // Het paneel moet op zichzelf genoeg zijn om het probleem te begrijpen en op te lossen.
 export function Panel() {
   const connectionType = useAppStore((s) => s.connectionType);
+  const hasExtender = useAppStore((s) => s.hasExtender);
   const selectIssue = useAppStore((s) => s.selectIssue);
   const focusNode = useAppStore((s) => s.focusNode);
   const issues = getIssues(connectionType);
-  const nodes = getNodes(connectionType);
+  const nodes = getActiveNodes(connectionType, hasExtender);
 
   return (
     <div className="flex flex-col gap-6 p-5">
@@ -18,7 +20,10 @@ export function Panel() {
         <p className="mt-1 text-sm text-ink-muted">{t('app.intro')}</p>
       </header>
 
-      <ConnectionToggle />
+      <div className="flex flex-col gap-3">
+        <ConnectionToggle />
+        <ExtenderToggle />
+      </div>
 
       <section aria-labelledby="issues-heading">
         <h2 id="issues-heading" className="mb-2 font-semibold">

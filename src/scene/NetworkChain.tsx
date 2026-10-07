@@ -6,6 +6,7 @@ import { usePrefersReducedMotion } from '../app/hooks';
 import { Highlight, IssuePulse, variant } from './Highlight';
 import { Hotspots } from './Hotspots';
 import { Labels } from './Labels';
+import { MergeStatic } from './MergeStatic';
 import { cableColorKey, decorCables, nodePositions, resolvePaths, type Vec3 } from './layout';
 import { Cable } from './links/Cable';
 import { Packets } from './links/Packets';
@@ -66,16 +67,24 @@ export function NetworkChain() {
     <group>
       <Highlight status={contextStatus}>
         <Neighborhood />
-        <House />
+        <MergeStatic>
+          <House />
+        </MergeStatic>
       </Highlight>
       <Highlight status={nodeStatus('kpn-core')}>
-        <KpnCore position={nodePositions['kpn-core']} />
+        <MergeStatic>
+          <KpnCore position={nodePositions['kpn-core']} />
+        </MergeStatic>
       </Highlight>
       <Highlight status={nodeStatus('backbone')}>
-        <Backbone position={nodePositions.backbone} />
+        <MergeStatic>
+          <Backbone position={nodePositions.backbone} />
+        </MergeStatic>
       </Highlight>
       <Highlight status={nodeStatus('street-cabinet')}>
-        <StreetCabinet position={nodePositions['street-cabinet']} />
+        <MergeStatic>
+          <StreetCabinet position={nodePositions['street-cabinet']} />
+        </MergeStatic>
       </Highlight>
       <Highlight status={nodeStatus('house-connection')}>
         <HouseConnection position={nodePositions['house-connection']} type={connectionType} />

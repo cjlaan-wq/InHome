@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { getIssue } from '../content';
+import { useActiveIssue } from '../state/issueStatus';
 import { useAppStore } from '../state/store';
 import { timings } from '../theme';
 import { ExploreOverview } from './ExploreOverview';
@@ -11,7 +11,7 @@ import { NodeDetail } from './NodeDetail';
 export function Panel() {
   const mode = useAppStore((s) => s.mode);
   const focusNodeId = useAppStore((s) => s.focusNodeId);
-  const issue = useAppStore((s) => (s.mode === 'issue' ? getIssue(s.selectedIssueId) : undefined));
+  const issue = useActiveIssue();
   const root = useRef<HTMLDivElement>(null);
 
   const view = issue ? `issue:${issue.id}` : focusNodeId ? `node:${focusNodeId}` : 'overview';

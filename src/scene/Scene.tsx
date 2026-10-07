@@ -1,10 +1,12 @@
 import { Canvas } from '@react-three/fiber';
 import { colors } from '../theme';
-import { t } from '../i18n';
 import { usePageVisible, usePrefersReducedMotion } from '../app/hooks';
 import { CameraRig } from './CameraRig';
 import { Lights } from './Lights';
 import { NetworkChain } from './NetworkChain';
+import { PerfStats } from './PerfStats';
+
+const showPerf = new URLSearchParams(window.location.search).has('perf');
 
 // Lazy geladen vanuit de app-shell, zodat het tekstpaneel direct zichtbaar is.
 export default function Scene() {
@@ -15,10 +17,9 @@ export default function Scene() {
     <Canvas
       // Verborgen tabblad: niet renderen. Reduced motion: alleen renderen als er iets verandert.
       frameloop={!visible ? 'never' : reducedMotion ? 'demand' : 'always'}
-      dpr={[1, 2]}
+      // Max. 1,75× pixeldichtheid: scherp genoeg, veel lichter voor telefoons met hoge resolutie.
+      dpr={[1, 1.75]}
       camera={{ fov: 35, near: 0.5, far: 200 }}
-      aria-label={t('scene.ariaLabel')}
-      role="img"
     >
       <color attach="background" args={[colors.sceneBackground]} />
       <fog attach="fog" args={[colors.sceneBackground, 45, 90]} />
@@ -29,6 +30,7 @@ export default function Scene() {
       </mesh>
       <NetworkChain />
       <CameraRig />
+      {showPerf && <PerfStats />}
     </Canvas>
   );
 }

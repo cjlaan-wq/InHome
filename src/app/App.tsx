@@ -11,15 +11,30 @@ import { hasWebGL, useIsDesktop } from './hooks';
 // Het 3D-canvas wordt lazy geladen; het tekstpaneel staat er direct.
 const Scene = lazy(() => import('../scene/Scene'));
 
+/** ?2d in de URL forceert de 2D-fallback (handig om te testen en te demonstreren). */
+const force2d = new URLSearchParams(window.location.search).has('2d');
+
 function Stage() {
-  const [webgl] = useState(hasWebGL);
-  if (!webgl) return <ChainDiagram />;
+  const [webgl] = useState(() => !force2d && hasWebGL());
   return (
-    <Suspense
-      fallback={<div className="flex h-full items-center justify-center text-sm text-ink-muted">{t('scene.loading')}</div>}
-    >
-      <Scene />
-    </Suspense>
+    <>
+      <h1 className="sr-only">{t('app.title')}</h1>
+      {webgl ? <Scene3D /> : <ChainDiagram />}
+    </>
+  );
+}
+
+function Scene3D() {
+  return (
+    <>
+      {/* Beschrijving voor schermlezers; alle informatie staat ook in het paneel. */}
+      <p className="sr-only">{t('scene.ariaLabel')}</p>
+      <Suspense
+        fallback={<div className="flex h-full items-center justify-center text-sm text-ink-muted">{t('scene.loading')}</div>}
+      >
+        <Scene />
+      </Suspense>
+    </>
   );
 }
 
@@ -64,6 +79,7 @@ function Layout() {
           <Stage />
         </main>
         <aside
+          aria-label={t('panel.label')}
           data-scroll
           className="h-full shrink-0 overflow-y-auto border-l border-line bg-surface"
           style={{ width: layout.panelWidth }}

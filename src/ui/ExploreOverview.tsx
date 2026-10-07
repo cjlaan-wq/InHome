@@ -3,6 +3,7 @@ import { t } from '../i18n';
 import { useAppStore } from '../state/store';
 import { ConnectionToggle } from './ConnectionToggle';
 import { ExtenderToggle } from './ExtenderToggle';
+import { useFocusOnMount } from './useFocusOnMount';
 
 /** Startweergave van het paneel: verbinding kiezen, probleem kiezen of een onderdeel bekijken. */
 export function ExploreOverview() {
@@ -12,11 +13,14 @@ export function ExploreOverview() {
   const focusNode = useAppStore((s) => s.focusNode);
   const issues = getIssues(connectionType);
   const nodes = getActiveNodes(connectionType, hasExtender);
+  const heading = useFocusOnMount<HTMLHeadingElement>();
 
   return (
     <div className="flex flex-col gap-6 p-5">
       <header>
-        <h1 className="text-xl font-bold">{t('app.title')}</h1>
+        <h2 ref={heading} tabIndex={-1} className="text-xl font-bold outline-none">
+          {t('app.title')}
+        </h2>
         <p className="mt-1 text-sm text-ink-muted">{t('app.intro')}</p>
       </header>
 
@@ -26,9 +30,9 @@ export function ExploreOverview() {
       </div>
 
       <section aria-labelledby="issues-heading">
-        <h2 id="issues-heading" className="mb-2 font-semibold">
+        <h3 id="issues-heading" className="mb-2 font-semibold">
           {t('issues.heading')}
-        </h2>
+        </h3>
         {issues.length === 0 ? (
           <p className="text-sm text-ink-muted">{t('issues.empty')}</p>
         ) : (
@@ -50,9 +54,9 @@ export function ExploreOverview() {
       </section>
 
       <section aria-labelledby="nodes-heading">
-        <h2 id="nodes-heading" className="mb-2 font-semibold">
+        <h3 id="nodes-heading" className="mb-2 font-semibold">
           {t('nodes.heading')}
-        </h2>
+        </h3>
         <ol className="flex flex-col gap-1">
           {nodes.map((node, index) => (
             <li key={node.id}>

@@ -31,3 +31,26 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
+
+/* 2D-fallback: stromende pakketjes als bewegende streepjes. */
+.chain-flow {
+  stroke-dasharray: 2 14;
+  animation: chain-flow 1.2s linear infinite;
+}
+
+@keyframes chain-flow {
+  to {
+    stroke-dashoffset: -16;
+  }
+}
+
+/* Respecteer prefers-reduced-motion voor alle CSS-overgangen en -animaties. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

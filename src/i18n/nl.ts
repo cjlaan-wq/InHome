@@ -38,7 +38,10 @@ export const nl = {
   'issue.newTab': '(opent in een nieuw tabblad)',
   'scene.loading': '3D-weergave laden…',
   'scene.ariaLabel': '3D-weergave van je internetverbinding. Alle informatie staat ook in het paneel.',
-  'fallback.notice': 'Je apparaat ondersteunt geen 3D. Je ziet daarom een eenvoudige tekening.',
+  'fallback.notice': 'Je ziet een eenvoudige tekening van je verbinding. Klik op een onderdeel voor uitleg.',
+  'fallback.ariaLabel': 'Tekening van je internetverbinding, van KPN tot je apparaten',
+  'fallback.house': 'Je huis',
+  'panel.label': 'Uitleg en hulp',
   'sheet.expand': 'Paneel uitklappen',
   'sheet.collapse': 'Paneel inklappen',
 } as const;

@@ -168,17 +168,6 @@ export const linkPaths: Record<string, PathSpec[]> = {
   extender__devices: [{ medium: 'air', from: nodePositions.extender, to: devicePositions.phone, deviceId: 'phone' }],
 };
 
-/** Volgorde van de verbindingen van KPN naar je apparaten (stroomafwaarts). */
-export const linkOrder: string[] = [
-  'kpn-core__backbone',
-  'backbone__street-cabinet',
-  'street-cabinet__house-connection',
-  'house-connection__modem',
-  'wifi__extender',
-  'wifi__devices',
-  'extender__devices',
-];
-
 /** Extra glasvezelkabels die naar andere wijken lopen (decor, worden niet uitgelicht). */
 export const decorCables: Vec3[][] = [
   [

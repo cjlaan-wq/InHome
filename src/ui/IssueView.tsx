@@ -6,29 +6,23 @@ import { t } from '../i18n';
 import { useAppStore } from '../state/store';
 import { timings } from '../theme';
 import { ExternalIcon, WarningIcon } from './Icons';
+import { useFocusOnMount } from './useFocusOnMount';
 
 /** Probleemmodus: uitleg in stappen, daarna de oplossingen en een 'Lukt het niet?'-route. */
 export function IssueView({ issue }: { issue: Issue }) {
   const activeStep = useAppStore((s) => s.activeStep);
   const setStep = useAppStore((s) => s.setStep);
   const backToExplore = useAppStore((s) => s.backToExplore);
-  const heading = useRef<HTMLHeadingElement>(null);
-  const firstRender = useRef(true);
+  const title = useFocusOnMount<HTMLHeadingElement>();
+  // Pas na de eerste stapwissel gaat de focus naar de stap (bij openen staat hij op de titel).
+  const openedAtStep = useRef(activeStep);
+  const stepChanged = useRef(false);
+  if (activeStep !== openedAtStep.current) stepChanged.current = true;
 
   const total = issueStepCount(issue);
   const isFixes = activeStep >= issue.steps.length;
   const step = issue.steps[activeStep];
   const isLast = activeStep === total - 1;
-
-  // Bij een nieuwe stap: focus naar de kop (niet bij openen, dan blijft de focus bij de probleemkop).
-  useEffect(() => {
-    if (firstRender.current) {
-      firstRender.current = false;
-      return;
-    }
-    heading.current?.focus({ preventScroll: true });
-    heading.current?.closest('[data-scroll]')?.scrollTo({ top: 0 });
-  }, [activeStep]);
 
   return (
     <article className="flex min-h-full flex-col" aria-labelledby="issue-title">
@@ -46,7 +40,7 @@ export function IssueView({ issue }: { issue: Issue }) {
           <p className="hidden text-xs font-medium uppercase tracking-wide text-ink-muted md:block">
             {t('issues.heading')}
           </p>
-          <h2 id="issue-title" className="text-lg font-bold md:mt-1 md:text-xl">
+          <h2 id="issue-title" ref={title} tabIndex={-1} className="text-lg font-bold outline-none md:mt-1 md:text-xl">
             {issue.title}
           </h2>
           <p className="mt-1 hidden text-sm text-ink-muted md:block">{issue.symptom}</p>
@@ -61,14 +55,12 @@ export function IssueView({ issue }: { issue: Issue }) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
             transition={{ duration: timings.uiTransition }}
-            aria-live="polite"
           >
-            <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">
-              {t('issue.step', { index: activeStep + 1, total })}
-            </p>
-            <h3 ref={heading} tabIndex={-1} className="mt-1 text-lg font-semibold outline-none">
-              {isFixes ? t('issue.fixesTitle') : step.title}
-            </h3>
+            <StepHeading
+              eyebrow={t('issue.step', { index: activeStep + 1, total })}
+              title={isFixes ? t('issue.fixesTitle') : step.title}
+              autoFocus={stepChanged.current}
+            />
             {isFixes ? <Fixes issue={issue} /> : <p className="mt-2 leading-relaxed">{step.body}</p>}
           </motion.section>
         </AnimatePresence>
@@ -97,6 +89,25 @@ export function IssueView({ issue }: { issue: Issue }) {
         </button>
       </nav>
     </article>
+  );
+}
+
+/** Kop van een stap. Krijgt de focus zodra hij verschijnt (na de overgang), zodat je bij de nieuwe stap begint. */
+function StepHeading({ eyebrow, title, autoFocus }: { eyebrow: string; title: string; autoFocus: boolean }) {
+  const heading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (!autoFocus) return;
+    heading.current?.focus({ preventScroll: true });
+    heading.current?.closest('[data-scroll]')?.scrollTo({ top: 0 });
+  }, [autoFocus]);
+
+  return (
+    <>
+      <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">{eyebrow}</p>
+      <h3 ref={heading} tabIndex={-1} className="mt-1 text-lg font-semibold outline-none">
+        {title}
+      </h3>
+    </>
   );
 }
 

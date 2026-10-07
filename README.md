@@ -10,3 +10,13 @@ npm run build
 ```
 
 Content (onderdelen, verbindingen, problemen) staat in `src/content/`; kleuren en timings in `src/theme/`.
+
+## Handig bij testen
+
+- `?2d` – toon de 2D-fallback (SVG) in plaats van de 3D-scène
+- `?perf` – toon draw calls, driehoeken en fps in de scène
+
+## Sneltoetsen
+
+- `Esc` – terug naar het overzicht
+- `←` / `→` – vorige/volgende stap bij een probleem

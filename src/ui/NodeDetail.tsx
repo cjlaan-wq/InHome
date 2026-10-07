@@ -1,26 +1,22 @@
-import { useEffect, useRef } from 'react';
 import { getActiveNodes } from '../content';
 import type { NodeId } from '../content/types';
 import { t } from '../i18n';
 import { useAppStore } from '../state/store';
+import { useFocusOnMount } from './useFocusOnMount';
 
 /** Uitleg over één onderdeel, met vorige/volgende om de keten door te lopen. */
 export function NodeDetail({ nodeId }: { nodeId: NodeId }) {
   const connectionType = useAppStore((s) => s.connectionType);
   const hasExtender = useAppStore((s) => s.hasExtender);
   const focusNode = useAppStore((s) => s.focusNode);
-  const heading = useRef<HTMLHeadingElement>(null);
+  // Focus naar de kop, zodat toetsenbord- en schermlezergebruikers meteen bij de uitleg zijn.
+  const heading = useFocusOnMount<HTMLHeadingElement>();
 
   const nodes = getActiveNodes(connectionType, hasExtender);
   const index = nodes.findIndex((node) => node.id === nodeId);
   const node = nodes[index];
   const previous = nodes[index - 1];
   const next = nodes[index + 1];
-
-  // Focus naar de kop, zodat toetsenbord- en schermlezergebruikers meteen bij de uitleg zijn.
-  useEffect(() => {
-    heading.current?.focus({ preventScroll: true });
-  }, [nodeId]);
 
   if (!node) return null;
 

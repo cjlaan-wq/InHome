@@ -1,10 +1,10 @@
 import { useLayoutEffect, useRef, type ReactNode } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
+import type { Status } from '../state/issueStatus';
 import { colors, timings } from '../theme';
 
-/** Hoe een onderdeel in beeld is: gewoon, betrokken bij het probleem, of naar de achtergrond. */
-export type Status = 'normal' | 'affected' | 'dimmed';
+export type { Status };
 
 const dimTarget = new THREE.Color(colors.dimmedSurface);
 const warning = new THREE.Color(colors.warning);

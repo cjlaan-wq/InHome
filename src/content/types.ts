@@ -60,6 +60,7 @@ export type HousePreset = {
   /** Waar alles staat als de klant nog niets heeft gekozen. */
   defaults: {
     modemRoomId: string;
+    /** Standaardkamer voor het eerste SuperWifi-punt dat de klant toevoegt. */
     extenderRoomId: string;
     deviceRooms: Record<DeviceId, string>;
   };

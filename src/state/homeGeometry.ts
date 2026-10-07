@@ -21,9 +21,13 @@ const deviceSlots: [number, number][] = [
   [0.36, 0.88],
 ];
 
+/** Meer SuperWifi-punten dan dit is in een gewoon huis zelden nodig. */
+export const maxExtenders = 3;
+
 export type HomePlacement = {
   modemRoomId: string;
-  extenderRoomId: string;
+  /** Kamers van de SuperWifi-punten (0 tot maxExtenders). */
+  extenderRoomIds: string[];
   deviceRooms: Record<DeviceId, string>;
 };
 
@@ -48,12 +52,26 @@ export const standHeight = 0.8;
 /** KPN Box: achterin links in de kamer, op een kastje. */
 export const modemSpot = (room: Room): Point3 => [room.x + 0.85, floorTop(room.floor) + standHeight + 0.27, room.z + 0.45];
 
-/** SuperWifi-punt: links in de kamer, vóór de plek van de KPN Box (zodat ze nooit botsen). */
-export const extenderSpot = (room: Room): Point3 => [
-  room.x + 0.45,
+/**
+ * SuperWifi-punt: achter in de kamer, een stuk naar het midden (in grote kamers als de zolder
+ * staat het dan niet in een uithoek), vóór de plek van de KPN Box. Een tweede punt schuift op.
+ */
+export const extenderSpot = (room: Room, slot = 0): Point3 => [
+  room.x + Math.min(Math.max(0.45, room.width * 0.3), room.width - 0.5) + slot * 0.6,
   floorTop(room.floor) + standHeight + 0.19,
   room.z + Math.min(room.depth - 0.4, 1.3),
 ];
+
+/** Plekken van alle SuperWifi-punten (meerdere in één kamer krijgen elk een eigen plek). */
+export const extenderSpots = (house: HousePreset, placement: HomePlacement): Point3[] => {
+  const used = new Map<string, number>();
+  return placement.extenderRoomIds.map((id) => {
+    const room = roomById(house, id);
+    const slot = used.get(id) ?? 0;
+    used.set(id, slot + 1);
+    return extenderSpot(room, slot);
+  });
+};
 
 /** Glasvezelkastje/wandcontactdoos: tegen de achtermuur van de meterkast-kamer. */
 export const connectionSpot = (house: HousePreset): Point3 => {

@@ -3,7 +3,7 @@
 /* Spiegelt src/theme/index.ts zodat Tailwind-classes dezelfde tokens gebruiken. */
 @theme {
   --color-kpn-green: #00c300;
-  --color-kpn-green-dark: #008a00;
+  --color-kpn-green-dark: #007a00;
   --color-warning: #f28c28;
   --color-warning-dark: #a84e00;
   --color-warning-soft: #fff1e5;

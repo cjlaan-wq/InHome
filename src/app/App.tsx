@@ -71,10 +71,9 @@ function useSaveHome() {
       useAppStore.subscribe((state, previous) => {
         if (
           state.houseId !== previous.houseId ||
-          state.placement !== previous.placement ||
-          state.hasExtender !== previous.hasExtender
+          state.placement !== previous.placement
         )
-          saveHome({ houseId: state.houseId, placement: state.placement, hasExtender: state.hasExtender });
+          saveHome({ houseId: state.houseId, placement: state.placement });
       }),
     [],
   );

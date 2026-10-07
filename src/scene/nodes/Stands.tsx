@@ -6,19 +6,21 @@ import { Block, Cylinder } from '../primitives';
 
 type Props = {
   modem: Vec3;
-  extender?: Vec3;
+  extenders: Vec3[];
   devices: Record<DeviceId, Vec3>;
   shownDevices: DeviceId[];
   modemShown: boolean;
 };
 
 /** Meubels die met de KPN Box, het SuperWifi-punt en de apparaten mee verhuizen naar een andere kamer. */
-export function Stands({ modem, extender, devices, shownDevices, modemShown }: Props) {
+export function Stands({ modem, extenders, devices, shownDevices, modemShown }: Props) {
   const floorY = (p: Vec3, height: number) => p[1] - height;
   return (
     <group>
       {modemShown && <Cabinet at={modem} floor={floorY(modem, standHeight + 0.27)} size={[0.6, 0.45]} />}
-      {extender && <Cabinet at={extender} floor={floorY(extender, standHeight + 0.19)} size={[0.45, 0.4]} />}
+      {extenders.map((at, i) => (
+        <Cabinet key={i} at={at} floor={floorY(at, standHeight + 0.19)} size={[0.45, 0.4]} />
+      ))}
       {deviceOrder
         .filter((id) => shownDevices.includes(id))
         .map((id) => {

@@ -1,13 +1,14 @@
 import { useCursor } from '@react-three/drei';
 import { useThree, type ThreeEvent } from '@react-three/fiber';
 import type { NodeId } from '../content/types';
-import { useAppStore, type PlaceableId } from '../state/store';
+import { extenderItem, useAppStore, type PlaceableId } from '../state/store';
 import type { Hotspot } from './layout';
 import { geometries } from './materials';
 
 /** Wat je in 'Jouw huis' kunt verslepen. */
 const placeable = (spot: Hotspot): PlaceableId | null =>
-  spot.partId ?? (spot.nodeId === 'modem' || spot.nodeId === 'extender' ? spot.nodeId : null);
+  spot.partId ??
+  (spot.nodeId === 'modem' ? 'modem' : spot.extenderIndex !== undefined ? extenderItem(spot.extenderIndex) : null);
 
 /** Meer beweging dan dit (px) tussen indrukken en loslaten is slepen, geen klik. */
 const dragThreshold = 6;
@@ -32,7 +33,7 @@ export function Hotspots({ hotspots, activeNodeIds }: { hotspots: Hotspot[]; act
         .filter((spot) => activeNodeIds.includes(spot.nodeId))
         .map((spot) => (
           <mesh
-            key={spot.partId ?? spot.nodeId}
+            key={spot.partId ?? `${spot.nodeId}${spot.extenderIndex ?? ''}`}
             geometry={geometries.box}
             position={spot.center}
             scale={spot.size}

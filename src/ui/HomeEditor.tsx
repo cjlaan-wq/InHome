@@ -1,8 +1,8 @@
 import { houses } from '../content';
 import type { HouseId, HousePreset } from '../content/types';
 import { t } from '../i18n';
-import { deviceOrder, houseSize } from '../state/homeGeometry';
-import { useAppStore, type PlaceableId } from '../state/store';
+import { deviceOrder, houseSize, maxExtenders } from '../state/homeGeometry';
+import { extenderItem, useAppStore, type PlaceableId } from '../state/store';
 import { qualityWord, useHome } from '../state/useHome';
 import { SignalBars } from './SignalBars';
 import { useFocusOnMount } from './useFocusOnMount';
@@ -17,7 +17,6 @@ export function HomeEditor() {
   const backToExplore = useAppStore((s) => s.backToExplore);
   const setHouse = useAppStore((s) => s.setHouse);
   const place = useAppStore((s) => s.place);
-  const setHasExtender = useAppStore((s) => s.setHasExtender);
   const resetHome = useAppStore((s) => s.resetHome);
 
   return (
@@ -68,22 +67,9 @@ export function HomeEditor() {
           {t('home.modem')}
         </h3>
         <RoomSelect house={house} item="modem" label={t('home.modem')} value={placement.modemRoomId} onChange={place} />
-        <label className="mt-1 flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={hasExtender}
-            onChange={(e) => setHasExtender(e.target.checked)}
-            className="size-5 accent-kpn-green-dark"
-          />
-          {t('home.extender')}
-        </label>
-        {hasExtender && (
-          <div className="grid grid-cols-[6rem_1fr] items-center gap-2 text-sm">
-            <label htmlFor="room-extender">{t('home.extenderRoom')}</label>
-            <RoomSelect house={house} item="extender" label={t('home.extenderRoom')} value={placement.extenderRoomId} onChange={place} />
-          </div>
-        )}
       </section>
+
+      <Extenders />
 
       <section aria-labelledby="devices-heading" className="flex flex-col gap-2">
         <h3 id="devices-heading" className="font-semibold">
@@ -117,7 +103,13 @@ export function HomeEditor() {
                 <span className="flex shrink-0 items-center gap-2 text-ink-muted">
                   {qualityWord(reading.quality)}
                   {hasExtender && reading.servedBy === 'extender' && (
-                    <span className="text-xs">({t('home.servedByExtender')})</span>
+                    <span className="text-xs">
+                      (
+                      {placement.extenderRoomIds.length > 1
+                        ? t('home.servedByExtenderN', { n: (reading.extenderIndex ?? 0) + 1 })
+                        : t('home.servedByExtender')}
+                      )
+                    </span>
                   )}
                   <SignalBars quality={reading.quality} />
                 </span>
@@ -140,11 +132,66 @@ export function HomeEditor() {
   );
 }
 
+/** SuperWifi-punten: toevoegen (tot maxExtenders), per punt een kamer kiezen of weghalen. */
+function Extenders() {
+  const { house, placement, coverage, roomIn } = useHome();
+  const place = useAppStore((s) => s.place);
+  const addExtender = useAppStore((s) => s.addExtender);
+  const removeExtender = useAppStore((s) => s.removeExtender);
+  const ids = placement.extenderRoomIds;
+  const full = ids.length >= maxExtenders;
+  // Nieuw punt: in de kamer waar het het meest helpt, anders de standaardkamer.
+  const suggestion = coverage.bestExtenderRoomId ?? house.defaults.extenderRoomId;
+
+  return (
+    <section aria-labelledby="extenders-heading" className="flex flex-col gap-2">
+      <h3 id="extenders-heading" className="font-semibold">
+        {t('home.extenders')}
+      </h3>
+      {ids.length === 0 && <p className="text-sm text-ink-muted">{t('home.extendersNone')}</p>}
+      {ids.map((roomId, i) => {
+        const feed = coverage.extenderFeeds[i] ?? -1;
+        const label = t('home.extenderN', { n: i + 1 });
+        return (
+          <div key={i} className="flex flex-col gap-1 rounded-lg bg-scene p-2 text-sm">
+            <div className="grid grid-cols-[6rem_1fr_auto] items-center gap-2">
+              <label htmlFor={`room-${extenderItem(i)}`} className="font-medium">
+                {label}
+              </label>
+              <RoomSelect house={house} item={extenderItem(i)} label={label} value={roomId} onChange={place} />
+              <button
+                type="button"
+                onClick={() => removeExtender(i)}
+                aria-label={t('home.extenderRemove', { name: label })}
+                className="rounded-lg px-2 py-1 text-ink-muted hover:bg-surface hover:text-ink focus-visible:outline-2 focus-visible:outline-kpn-green-dark"
+              >
+                ✕
+              </button>
+            </div>
+            <p className="text-xs text-ink-muted">
+              {feed >= 0 ? t('home.extenderFedByExtender', { n: feed + 1 }) : t('home.extenderFedByModem')}
+            </p>
+          </div>
+        );
+      })}
+      <button
+        type="button"
+        onClick={() => addExtender(suggestion)}
+        disabled={full}
+        className="self-start rounded-lg border border-kpn-green-dark px-3 py-1.5 text-sm font-medium text-kpn-green-dark hover:bg-scene disabled:border-line disabled:text-ink-muted focus-visible:outline-2 focus-visible:outline-kpn-green-dark"
+      >
+        {full ? t('home.extenderMax', { max: maxExtenders }) : `+ ${t('home.extenderAdd', { roomIn: roomIn(suggestion) })}`}
+      </button>
+    </section>
+  );
+}
+
 /** Persoonlijk advies, met knoppen die het advies meteen in de tekening toepassen. */
 function Advice() {
   const home = useHome();
   const place = useAppStore((s) => s.place);
-  const { coverage, placement, hasExtender } = home;
+  const addExtender = useAppStore((s) => s.addExtender);
+  const { coverage } = home;
   const weakest = coverage.devices[coverage.weakestDevice];
 
   if (weakest.quality === 'good') {
@@ -153,7 +200,6 @@ function Advice() {
   const device = home.deviceLabel(coverage.weakestDevice).toLowerCase();
   const modemRoom = coverage.betterModemRoomId;
   const extenderRoom = coverage.bestExtenderRoomId;
-  const extenderAlreadyThere = hasExtender && placement.extenderRoomId === extenderRoom;
 
   return (
     <div className="flex flex-col gap-2 rounded-xl border border-line p-3 text-sm" aria-live="polite">
@@ -173,14 +219,19 @@ function Advice() {
           </ApplyButton>
         </>
       )}
-      {extenderRoom && !extenderAlreadyThere && (
+      {extenderRoom && (
         <>
-          <p>{t('home.adviceExtender', { roomIn: home.roomIn(extenderRoom) })}</p>
-          <ApplyButton onClick={() => place('extender', extenderRoom)}>
+          <p>
+            {t(home.hasExtender ? 'home.adviceExtenderExtra' : 'home.adviceExtender', {
+              roomIn: home.roomIn(extenderRoom),
+            })}
+          </p>
+          <ApplyButton onClick={() => addExtender(extenderRoom)}>
             {t('home.adviceExtenderApply', { roomIn: home.roomIn(extenderRoom) })}
           </ApplyButton>
         </>
       )}
+      {!modemRoom && !extenderRoom && <p>{t('home.adviceCloser', { device })}</p>}
     </div>
   );
 }

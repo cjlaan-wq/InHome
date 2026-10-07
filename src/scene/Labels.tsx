@@ -85,7 +85,7 @@ type LabelsProps = {
 };
 
 export function Labels({ layout, nodes, nodeStatus, partStatus }: LabelsProps) {
-  const { nodePositions, devicePositions, labelOffset, floorOf, shown } = layout;
+  const { nodePositions, devicePositions, extenderPositions, shownExtenders, labelOffset, floorOf, shown } = layout;
   const home = useHome();
   const compact = useThree((s) => s.size.width < compactWidth);
   const hovered = useAppStore((s) => s.hovered);
@@ -95,7 +95,7 @@ export function Labels({ layout, nodes, nodeStatus, partStatus }: LabelsProps) {
     hovered?.nodeId === nodeId && (partId === undefined || hovered.partId === undefined || hovered.partId === partId);
   // Op een smal scherm: alleen hoofdlabels, plus het onderdeel waar je mee bezig bent en betrokken onderdelen.
   const onVisibleFloor = (id: NodeId) =>
-    !(id === 'house-connection' || id === 'modem' || id === 'extender') || shown(floorOf[id]);
+    id === 'house-connection' || id === 'modem' ? shown(floorOf[id]) : id !== 'extender' || shownExtenders.some(Boolean);
   const visible = nodes.filter(
     (node) =>
       onVisibleFloor(node.id) &&
@@ -109,7 +109,23 @@ export function Labels({ layout, nodes, nodeStatus, partStatus }: LabelsProps) {
   return (
     <>
       {visible.map((node) =>
-        node.parts ? (
+        node.id === 'extender' ? (
+          // Eén label per SuperWifi-punt; genummerd als er meer zijn.
+          extenderPositions.map((position, i) =>
+            shownExtenders[i] ? (
+              <Label
+                key={`extender-${i}`}
+                position={add(position, labelOffset.extender)}
+                text={extenderPositions.length > 1 ? `${node.label} ${i + 1}` : node.label}
+                tooltip={node.summary}
+                target={{ nodeId: node.id }}
+                active={focusNodeId === node.id}
+                hovered={isHovered(node.id)}
+                status={nodeStatus(node.id)}
+              />
+            ) : null,
+          )
+        ) : node.parts ? (
           node.parts.filter((part) => shown(floorOf[part.id])).map((part) => (
             <Label
               key={part.id}

@@ -5,7 +5,7 @@ import {
   connectionSpot,
   deviceOrder,
   deviceSpots,
-  extenderSpot,
+  extenderSpots,
   floorTop,
   houseSize,
   isCovered,
@@ -73,7 +73,15 @@ const outdoorLabelOffset: Partial<Record<NodeId, Vec3>> = {
   extender: [0, 0.6, 0],
 };
 
-export type Hotspot = { nodeId: NodeId; partId?: DeviceId; center: Vec3; size: Vec3; floor?: number };
+export type Hotspot = {
+  nodeId: NodeId;
+  partId?: DeviceId;
+  /** Welk SuperWifi-punt, bij nodeId 'extender'. */
+  extenderIndex?: number;
+  center: Vec3;
+  size: Vec3;
+  floor?: number;
+};
 
 const outdoorHotspots: Hotspot[] = [
   { nodeId: 'kpn-core', center: [-16, 1.7, -15.3], size: [6.4, 3.6, 3.4] },
@@ -152,18 +160,17 @@ export function computeSceneLayout(
   const size = houseSize(house);
   const meterRoom = roomById(house, house.meterRoomId);
   const modemRoom = roomById(house, placement.modemRoomId);
-  const extenderRoom = roomById(house, placement.extenderRoomId);
+  const extenderRooms = placement.extenderRoomIds.map((id) => roomById(house, id));
 
   const connection = connectionSpot(house) as Vec3;
   const modem = modemSpot(modemRoom) as Vec3;
   const wifi = add(modem, [0, 0.28, 0]);
-  const extender = extenderSpot(extenderRoom) as Vec3;
+  const extenders = extenderSpots(house, placement) as Vec3[];
   const devices = deviceSpots(house, placement) as Record<DeviceId, Vec3>;
 
   const floorOf = {
     'house-connection': meterRoom.floor,
     modem: modemRoom.floor,
-    extender: extenderRoom.floor,
     ...(Object.fromEntries(deviceOrder.map((id) => [id, roomById(house, placement.deviceRooms[id]).floor])) as Record<
       DeviceId,
       number
@@ -179,12 +186,16 @@ export function computeSceneLayout(
 
   const directionFor = (floor: number, p: Vec3) => (isCovered(house, floor, p[0], p[2]) ? lowDirection : undefined);
 
+  const shownExtenders = extenders.map((_, i) => hasExtender && shown(extenderRooms[i].floor));
+  const firstExtender = extenders[0] ?? modem;
+
   const nodePositions: Record<NodeId, Vec3> = {
     ...outdoorPositions,
     'house-connection': connection,
     modem,
     wifi,
-    extender,
+    // Het eerste SuperWifi-punt staat model voor 'het SuperWifi-punt' (camera, uitleg).
+    extender: firstExtender,
     devices: centroid,
   } as Record<NodeId, Vec3>;
 
@@ -203,7 +214,14 @@ export function computeSceneLayout(
     },
     modem: { target: add(modem, [-0.1, -0.05, 0]), distance: 4.5, direction: directionFor(modemRoom.floor, modem) },
     wifi: { target: houseCenter, distance: 13 + house.width * 0.4 },
-    extender: { target: extender, distance: 5.5, direction: directionFor(extenderRoom.floor, extender) },
+    extender:
+      extenders.length > 1
+        ? { target: houseCenter, distance: 12 + house.width * 0.4 }
+        : {
+            target: firstExtender,
+            distance: 5.5,
+            direction: extenderRooms[0] ? directionFor(extenderRooms[0].floor, firstExtender) : undefined,
+          },
     devices: { target: centroid, distance: Math.max(10, 8 + spread * 1.4) },
   } as Record<NodeId, CameraFocus>;
 
@@ -214,7 +232,13 @@ export function computeSceneLayout(
     { nodeId: 'house-connection', center: connection, size: [0.5, 0.6, 0.4], floor: meterRoom.floor },
     { nodeId: 'modem', center: modem, size: [0.5, 0.7, 0.6], floor: modemRoom.floor },
     { nodeId: 'wifi', center: add(wifi, labelOffset.wifi!), size: [1.4, 0.8, 1.4] },
-    { nodeId: 'extender', center: extender, size: [0.6, 0.6, 0.6], floor: extenderRoom.floor },
+    ...extenders.map((center, i) => ({
+      nodeId: 'extender' as const,
+      extenderIndex: i,
+      center,
+      size: [0.6, 0.6, 0.6] as Vec3,
+      floor: extenderRooms[i].floor,
+    })),
     { nodeId: 'devices', partId: 'laptop', center: add(devices.laptop, [0, 0.12, 0]), size: [0.8, 0.5, 0.7], floor: floorOf.laptop },
     { nodeId: 'devices', partId: 'tv', center: devices.tv, size: [1.7, 1.1, 0.4], floor: floorOf.tv },
     { nodeId: 'devices', partId: 'phone', center: devices.phone, size: [0.6, 0.3, 0.6], floor: floorOf.phone },
@@ -250,27 +274,38 @@ export function computeSceneLayout(
     [modem[0] - 0.12, modem[1] - 0.2, modem[2]],
   ];
 
-  // Wifi: elk apparaat krijgt zijn signaal van de beste bron (KPN Box of SuperWifi-punt).
-  const servedByExtender = (id: DeviceId) => hasExtender && coverage.devices[id].servedBy === 'extender';
+  // Wifi: elk apparaat krijgt zijn signaal van de beste bron (KPN Box of een SuperWifi-punt);
+  // SuperWifi-punten krijgen het hunne van de KPN Box of van een ander punt (mesh).
+  const servingExtender = (id: DeviceId) =>
+    hasExtender && coverage.devices[id].servedBy === 'extender' ? coverage.devices[id].extenderIndex : undefined;
   const visibleDevices = deviceOrder.filter((id) => shown(floorOf[id]));
+  const feedPosition = (index: number) => {
+    const feed = coverage.extenderFeeds[index] ?? -1;
+    return feed >= 0 ? extenders[feed] : wifi;
+  };
 
   const linkPaths: Record<string, PathSpec[]> = {
     ...outdoorPaths,
     'street-cabinet__house-connection': [{ medium: 'cable', cable: 'copper-on-dsl', points: streetCable }],
     'house-connection__modem': [{ medium: 'cable', cable: 'indoor', points: indoorCable }],
     wifi__devices: visibleDevices
-      .filter((id) => !servedByExtender(id))
+      .filter((id) => servingExtender(id) === undefined)
       .map((id) => ({ medium: 'air' as const, from: wifi, to: devices[id], deviceId: id })),
-    wifi__extender: hasExtender && shown(extenderRoom.floor) ? [{ medium: 'air', from: wifi, to: extender }] : [],
+    wifi__extender: extenders
+      .map((to, i) => ({ to, i }))
+      .filter(({ i }) => shownExtenders[i])
+      .map(({ to, i }) => ({ medium: 'air' as const, from: feedPosition(i), to })),
     extender__devices: visibleDevices
-      .filter(servedByExtender)
-      .map((id) => ({ medium: 'air' as const, from: extender, to: devices[id], deviceId: id })),
+      .filter((id) => servingExtender(id) !== undefined)
+      .map((id) => ({ medium: 'air' as const, from: extenders[servingExtender(id)!], to: devices[id], deviceId: id })),
   };
 
   return {
     house,
     nodePositions,
     devicePositions: devices,
+    extenderPositions: extenders,
+    shownExtenders,
     labelOffset,
     cameraFocus,
     homeFocus,

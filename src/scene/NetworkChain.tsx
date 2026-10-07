@@ -38,7 +38,7 @@ export function NetworkChain({ layout }: { layout: SceneLayout }) {
   const animate = !usePrefersReducedMotion();
   const home = useHome();
   const scene = useIssueScene(home.coverage);
-  const { nodePositions, devicePositions, floorOf, shown, visibleFloor, house } = layout;
+  const { nodePositions, devicePositions, extenderPositions, shownExtenders, floorOf, shown, visibleFloor, house } = layout;
 
   const nodes = useMemo(() => getActiveNodes(connectionType, hasExtender), [connectionType, hasExtender]);
   const paths = useMemo(
@@ -73,7 +73,7 @@ export function NetworkChain({ layout }: { layout: SceneLayout }) {
   const { nodeStatus, linkStatus, contextStatus } = scene;
   const shownDevices = deviceOrder.filter((id) => shown(floorOf[id]));
   const modemShown = shown(floorOf.modem);
-  const extenderShown = hasExtender && shown(floorOf.extender);
+  const visibleExtenders = extenderPositions.filter((_, i) => shownExtenders[i]);
   // Wifi-dekking per kamer: bij 'Jouw huis', bij uitleg over wifi en bij het probleem 'zwak signaal'.
   const showCoverage =
     mode === 'home' || (mode === 'explore' && focusNodeId === 'wifi') || scene.issue?.visualEffect === 'weak-signal';
@@ -88,7 +88,7 @@ export function NetworkChain({ layout }: { layout: SceneLayout }) {
         </MergeStatic>
         <Stands
           modem={nodePositions.modem}
-          extender={extenderShown ? nodePositions.extender : undefined}
+          extenders={visibleExtenders}
           devices={devicePositions}
           shownDevices={shownDevices}
           modemShown={modemShown}
@@ -127,14 +127,14 @@ export function NetworkChain({ layout }: { layout: SceneLayout }) {
           <WifiSignal position={nodePositions.wifi} radius={6.5} animate={animate} status={nodeStatus('wifi')} />
         </>
       )}
-      {extenderShown && (
-        <>
+      {visibleExtenders.map((position, i) => (
+        <group key={`${i}-${position.join(',')}`}>
           <Highlight status={nodeStatus('extender')}>
-            <Extender position={nodePositions.extender} />
+            <Extender position={position} />
           </Highlight>
-          <WifiSignal position={nodePositions.extender} radius={4} animate={animate} status={nodeStatus('extender')} />
-        </>
-      )}
+          <WifiSignal position={position} radius={4} animate={animate} status={nodeStatus('extender')} />
+        </group>
+      ))}
       <Devices positions={devicePositions} shown={shownDevices} statusOf={scene.partStatus} />
 
       {decor.map((curve, i) => (

@@ -198,8 +198,8 @@ function Fixes({ issue, fill }: { issue: Issue; fill: (text: string) => string }
 function FixCard({ fix, index, fill }: { fix: Fix; index: number; fill: (text: string) => string }) {
   const hasExtender = useAppStore((s) => s.hasExtender);
   const setHasExtender = useAppStore((s) => s.setHasExtender);
-  const place = useAppStore((s) => s.place);
-  const { coverage, placement } = useHome();
+  const addExtender = useAppStore((s) => s.addExtender);
+  const { coverage, house } = useHome();
 
   return (
     <li className="rounded-xl border border-line p-4">
@@ -224,7 +224,7 @@ function FixCard({ fix, index, fill }: { fix: Fix; index: number; fill: (text: s
           onClick={() =>
             hasExtender
               ? setHasExtender(false)
-              : place('extender', coverage.bestExtenderRoomId ?? placement.extenderRoomId)
+              : addExtender(coverage.bestExtenderRoomId ?? house.defaults.extenderRoomId)
           }
           aria-pressed={hasExtender}
           className="mt-3 rounded-lg border border-kpn-green-dark px-3 py-2 text-sm font-medium text-kpn-green-dark hover:bg-scene focus-visible:outline-2 focus-visible:outline-kpn-green-dark"

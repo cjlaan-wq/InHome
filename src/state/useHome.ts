@@ -32,7 +32,7 @@ export function useHome() {
 
   return useMemo(() => {
     const house = getHouse(houseId);
-    const coverage = computeCoverage(house, placement, hasExtender);
+    const coverage = computeCoverage(house, placement);
     const roomLabel = (id: string) => roomById(house, id).label;
     const lower = (text: string) => text.toLowerCase();
     /** 'in de woonkamer', 'op zolder'. */
@@ -49,7 +49,9 @@ export function useHome() {
       weakObstacles: describeObstacles(weak),
       modemRoomIn: roomIn(placement.modemRoomId),
       adviceModemRoom: lower(roomLabel(coverage.betterModemRoomId ?? placement.modemRoomId)),
-      adviceExtenderRoomIn: roomIn(coverage.bestExtenderRoomId ?? placement.extenderRoomId),
+      adviceExtenderRoomIn: roomIn(
+        coverage.bestExtenderRoomId ?? placement.extenderRoomIds[0] ?? house.defaults.extenderRoomId,
+      ),
     };
 
     return {

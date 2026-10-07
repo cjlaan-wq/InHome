@@ -3,7 +3,7 @@
 
 export const colors = {
   kpnGreen: '#00C300',
-  kpnGreenDark: '#008A00', // voor tekst op wit (voldoende contrast)
+  kpnGreenDark: '#007A00', // voor tekst op wit én lichtgrijs (contrast ≥ 4,5:1)
   warning: '#F28C28',
   warningDark: '#A84E00', // voor tekst/iconen en witte tekst op oranje (voldoende contrast)
   warningSoft: '#FFF1E5',

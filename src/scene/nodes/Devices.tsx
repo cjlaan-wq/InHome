@@ -1,5 +1,5 @@
 import type { DeviceId } from '../../content/types';
-import { devicePositions, type Vec3 } from '../layout';
+import type { Vec3 } from '../layout';
 import { materials } from '../materials';
 import { Block } from '../primitives';
 import { Highlight, type Status } from '../Highlight';
@@ -27,13 +27,14 @@ function Phone({ position }: { position: Vec3 }) {
 
 function Tv({ position }: { position: Vec3 }) {
   return (
-    // Hangt aan de binnenmuur, scherm naar de woonkamer (+x).
-    <group position={position} rotation-y={Math.PI / 2}>
-      <Block size={[1.6, 0.92, 0.06]} material={materials.device} />
-      <Block position={[0, 0, 0.031]} size={[1.5, 0.82, 0.005]} material={materials.screen} />
-      {/* Decoder op het meubel eronder */}
-      <Block position={[0.5, -0.62, 0.25]} size={[0.3, 0.06, 0.22]} material={materials.device} />
-      <Block position={[0.6, -0.62, 0.361]} size={[0.03, 0.02, 0.005]} material={materials.led} />
+    // Op een tv-meubel, scherm naar voren (naar de camera).
+    <group position={position}>
+      <Block size={[1.2, 0.7, 0.05]} material={materials.device} />
+      <Block position={[0, 0, 0.026]} size={[1.12, 0.62, 0.005]} material={materials.screen} />
+      <Block position={[0, -0.4, 0]} size={[0.3, 0.1, 0.2]} material={materials.device} />
+      {/* Decoder op het meubel */}
+      <Block position={[0.42, -0.42, 0.08]} size={[0.26, 0.05, 0.18]} material={materials.device} />
+      <Block position={[0.5, -0.42, 0.171]} size={[0.03, 0.02, 0.005]} material={materials.led} />
     </group>
   );
 }
@@ -45,14 +46,20 @@ const components: Record<DeviceId, (props: { position: Vec3 }) => React.JSX.Elem
 };
 
 /** Apparaten: elk apparaat is een eigen subonderdeel, zodat het los uitgelicht kan worden. */
-export function Devices({ statusOf }: { statusOf: (id: DeviceId) => Status }) {
+type Props = {
+  positions: Record<DeviceId, Vec3>;
+  shown: DeviceId[];
+  statusOf: (id: DeviceId) => Status;
+};
+
+export function Devices({ positions, shown, statusOf }: Props) {
   return (
     <>
-      {(Object.keys(devicePositions) as DeviceId[]).map((id) => {
+      {shown.map((id) => {
         const Device = components[id];
         return (
           <Highlight key={id} status={statusOf(id)}>
-            <Device position={devicePositions[id]} />
+            <Device position={positions[id]} />
           </Highlight>
         );
       })}

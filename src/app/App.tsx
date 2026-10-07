@@ -5,6 +5,7 @@ import { t } from '../i18n';
 import { layout } from '../theme';
 import { BottomSheet } from '../ui/BottomSheet';
 import { Panel } from '../ui/Panel';
+import { saveHome } from '../state/persistHome';
 import { useAppStore } from '../state/store';
 import { hasWebGL, useIsDesktop } from './hooks';
 
@@ -38,8 +39,12 @@ function Scene3D() {
   );
 }
 
+/** Typt de gebruiker ergens? (Keuzerondjes en vinkjes tellen niet: daar werken sneltoetsen gewoon.) */
 const isTyping = (target: EventTarget | null) =>
-  target instanceof HTMLElement && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName));
+  target instanceof HTMLElement &&
+  (target.isContentEditable ||
+    ['TEXTAREA', 'SELECT'].includes(target.tagName) ||
+    (target instanceof HTMLInputElement && !['radio', 'checkbox', 'button'].includes(target.type)));
 
 /** Sneltoetsen: Escape terug naar het overzicht; ← → door de stappen van een probleem. */
 function useKeyboardShortcuts() {
@@ -48,7 +53,7 @@ function useKeyboardShortcuts() {
       if (isTyping(e.target) || e.altKey || e.ctrlKey || e.metaKey) return;
       const state = useAppStore.getState();
       if (e.key === 'Escape') {
-        if (state.mode === 'issue') state.backToExplore();
+        if (state.mode === 'issue' || state.mode === 'home') state.backToExplore();
         else if (state.focusNodeId) state.focusNode(null);
       } else if (state.mode === 'issue' && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
         state.setStep(state.activeStep + (e.key === 'ArrowRight' ? 1 : -1));
@@ -59,8 +64,25 @@ function useKeyboardShortcuts() {
   }, []);
 }
 
+/** 'Jouw huis' bewaren (op dit apparaat en in de link) zodra er iets verandert. */
+function useSaveHome() {
+  useEffect(
+    () =>
+      useAppStore.subscribe((state, previous) => {
+        if (
+          state.houseId !== previous.houseId ||
+          state.placement !== previous.placement ||
+          state.hasExtender !== previous.hasExtender
+        )
+          saveHome({ houseId: state.houseId, placement: state.placement, hasExtender: state.hasExtender });
+      }),
+    [],
+  );
+}
+
 export function App() {
   useKeyboardShortcuts();
+  useSaveHome();
   return (
     // Framer-motion respecteert prefers-reduced-motion voor alle UI-overgangen.
     <MotionConfig reducedMotion="user">

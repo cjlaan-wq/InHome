@@ -5,7 +5,8 @@ import { t } from '../i18n';
 import { useAppStore, type Hovered } from '../state/store';
 import { WarningIcon } from '../ui/Icons';
 import type { Status } from './Highlight';
-import { compactLabelNodes, devicePositions, focusedLabelOffset, labelOffset, nodePositions, type Vec3 } from './layout';
+import { useHome } from '../state/useHome';
+import { compactLabelNodes, focusedLabelOffset, type SceneLayout, type Vec3 } from './layout';
 
 /** Onder deze canvasbreedte tonen we alleen de hoofdlabels, anders overlappen ze in het huis. */
 const compactWidth = 640;
@@ -36,16 +37,21 @@ const labelStyle = (status: Status, active: boolean) => {
 function Label({ position, text, tooltip, target, active, hovered, status }: LabelProps) {
   const setHovered = useAppStore((s) => s.setHovered);
   const focusNode = useAppStore((s) => s.focusNode);
+  // In 'Jouw huis' blijft de camera op het huis; daar sleep je in plaats van te klikken.
+  const homeMode = useAppStore((s) => s.mode === 'home');
 
   return (
-    <Html position={position} center zIndexRange={[5, 0]} style={{ pointerEvents: 'none' }}>
+    // Verankerd aan de onderkant: een uitklappende tooltip groeit naar boven, weg van het object
+    // (anders ligt hij over het object en kun je het niet meer oppakken of aanklikken).
+    <Html position={position} zIndexRange={[5, 0]} style={{ pointerEvents: 'none' }}>
+      <div className="absolute bottom-0 left-0 -translate-x-1/2 translate-y-3">
       <button
         type="button"
         tabIndex={-1}
         aria-hidden="true"
         onPointerEnter={() => setHovered(target)}
         onPointerLeave={() => setHovered(null)}
-        onClick={() => focusNode(target.nodeId)}
+        onClick={() => !homeMode && focusNode(target.nodeId)}
         className={`pointer-events-auto block cursor-pointer whitespace-nowrap rounded-2xl px-2.5 py-1 text-left text-xs font-medium shadow-sm ring-1 transition-colors ${labelStyle(status, active)}`}
       >
         <span className="flex items-center gap-1">
@@ -57,24 +63,30 @@ function Label({ position, text, tooltip, target, active, hovered, status }: Lab
             {tooltip}
             {!active && (
               <span className={`mt-0.5 block ${status === 'affected' ? 'text-warning-dark' : 'text-kpn-green-dark'}`}>
-                {t('tooltip.more')} →
+                {homeMode && (target.partId || target.nodeId === 'modem' || target.nodeId === 'extender')
+                  ? t('scene.dragHere')
+                  : `${t('tooltip.more')} →`}
               </span>
             )}
           </span>
         )}
       </button>
+      </div>
     </Html>
   );
 }
 
 /** Korte labels in de scène. De teksten komen uit de content (incl. varianten per verbindingstype). */
 type LabelsProps = {
+  layout: SceneLayout;
   nodes: NetworkNode[];
   nodeStatus: (id: NodeId) => Status;
   partStatus: (id: DeviceId) => Status;
 };
 
-export function Labels({ nodes, nodeStatus, partStatus }: LabelsProps) {
+export function Labels({ layout, nodes, nodeStatus, partStatus }: LabelsProps) {
+  const { nodePositions, devicePositions, labelOffset, floorOf, shown } = layout;
+  const home = useHome();
   const compact = useThree((s) => s.size.width < compactWidth);
   const hovered = useAppStore((s) => s.hovered);
   const focusNodeId = useAppStore((s) => s.focusNodeId);
@@ -82,25 +94,28 @@ export function Labels({ nodes, nodeStatus, partStatus }: LabelsProps) {
   const isHovered = (nodeId: NodeId, partId?: DeviceId) =>
     hovered?.nodeId === nodeId && (partId === undefined || hovered.partId === undefined || hovered.partId === partId);
   // Op een smal scherm: alleen hoofdlabels, plus het onderdeel waar je mee bezig bent en betrokken onderdelen.
+  const onVisibleFloor = (id: NodeId) =>
+    !(id === 'house-connection' || id === 'modem' || id === 'extender') || shown(floorOf[id]);
   const visible = nodes.filter(
     (node) =>
-      !compact ||
+      onVisibleFloor(node.id) &&
+      (!compact ||
       compactLabelNodes.includes(node.id) ||
       node.id === focusNodeId ||
       hovered?.nodeId === node.id ||
-      nodeStatus(node.id) === 'affected',
+      nodeStatus(node.id) === 'affected'),
   );
 
   return (
     <>
       {visible.map((node) =>
         node.parts ? (
-          node.parts.map((part) => (
+          node.parts.filter((part) => shown(floorOf[part.id])).map((part) => (
             <Label
               key={part.id}
               position={add(devicePositions[part.id], [0, 0.55, 0])}
               text={part.label}
-              tooltip={t('tooltip.deviceRoom', { device: part.label, room: part.room })}
+              tooltip={t('tooltip.deviceRoom', { device: part.label, roomIn: home.deviceRoomIn(part.id) })}
               target={{ nodeId: node.id, partId: part.id }}
               active={focusNodeId === node.id}
               hovered={isHovered(node.id, part.id)}

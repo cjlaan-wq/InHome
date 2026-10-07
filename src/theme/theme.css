@@ -9,6 +9,9 @@
   --color-warning-soft: #fff1e5;
   --color-error: #e5412d;
   --color-dimmed: #b8bec6;
+  --color-coverage-good: #3dd13d;
+  --color-coverage-fair: #f5b700;
+  --color-coverage-weak: #f0642d;
   --color-ink: #1a1f24;
   --color-ink-muted: #5a646e;
   --color-surface: #ffffff;

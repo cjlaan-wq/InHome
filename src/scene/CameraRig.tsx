@@ -6,7 +6,7 @@ import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import { useAppStore } from '../state/store';
 import { usePrefersReducedMotion } from '../app/hooks';
 import { timings } from '../theme';
-import { cameraFocus, overview, viewDirection, type CameraFocus } from './layout';
+import { overview, viewDirection, type CameraFocus, type SceneLayout } from './layout';
 
 const direction = new THREE.Vector3(...viewDirection).normalize();
 const up = new THREE.Vector3(0, 1, 0);
@@ -29,7 +29,7 @@ type Flight = {
  * meestal vanuit dezelfde kijkrichting als het overzicht, zodat je nooit gedesoriënteerd raakt.
  * Bij reduced motion: harde overgang en geen zwaai.
  */
-export function CameraRig() {
+export function CameraRig({ layout }: { layout: SceneLayout }) {
   const controls = useRef<OrbitControlsImpl>(null);
   const flight = useRef<Flight | null>(null);
   const lastInteraction = useRef(-Infinity);
@@ -40,16 +40,25 @@ export function CameraRig() {
   const clock = useThree((s) => s.clock);
   const aspect = useThree((s) => s.size.width / s.size.height);
   const focusNodeId = useAppStore((s) => s.focusNodeId);
+  const homeMode = useAppStore((s) => s.mode === 'home');
   const reducedMotion = usePrefersReducedMotion();
 
+  const focus: CameraFocus = homeMode
+    ? layout.homeFocus
+    : focusNodeId
+      ? layout.cameraFocus[focusNodeId]
+      : overview;
+  // Alleen opnieuw vliegen als het doel echt verandert (niet bij elke herberekening van de layout).
+  const focusKey = JSON.stringify(focus);
+
   const goal = useMemo(() => {
-    const focus: CameraFocus = focusNodeId ? cameraFocus[focusNodeId] : overview;
+    const focus = JSON.parse(focusKey) as CameraFocus;
     // Op smalle (staande) schermen verder weg, zodat alles in beeld blijft.
     const scale = aspect >= 1.3 ? 1 : Math.min(1.8, 1.3 / aspect) ** 0.85;
     const target = new THREE.Vector3(...focus.target);
     const dir = focus.direction ? new THREE.Vector3(...focus.direction).normalize() : direction;
     return { target, position: target.clone().addScaledVector(dir, focus.distance * scale) };
-  }, [focusNodeId, aspect]);
+  }, [focusKey, aspect]);
 
   useLayoutEffect(() => {
     const c = controls.current;
@@ -89,7 +98,7 @@ export function CameraRig() {
       return;
     }
     // Rustige zwaai rond het overzicht zolang niemand de camera aanraakt.
-    if (!reducedMotion && !focusNodeId && state.clock.elapsedTime - lastInteraction.current > sway.idleDelay) {
+    if (!reducedMotion && !focusNodeId && !homeMode && state.clock.elapsedTime - lastInteraction.current > sway.idleDelay) {
       const angle = sway.amplitude * sway.speed * Math.cos(state.clock.elapsedTime * sway.speed) * delta;
       camera.position.sub(c.target).applyAxisAngle(up, angle).add(c.target);
       c.update();

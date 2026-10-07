@@ -5,6 +5,7 @@ import { t } from '../i18n';
 import { useIsDesktop } from '../app/hooks';
 import { issueStatus, useActiveIssue, type Status } from '../state/issueStatus';
 import { useAppStore } from '../state/store';
+import { useHome } from '../state/useHome';
 import { colors } from '../theme';
 
 /** Onderdelen vanaf hier staan in je huis. */
@@ -41,7 +42,8 @@ export function ChainDiagram() {
 
   const nodes = getActiveNodes(connectionType, hasExtender);
   const links = getLinks(connectionType, hasExtender);
-  const status = useMemo(() => issueStatus(issue, hasExtender), [issue, hasExtender]);
+  const { coverage } = useHome();
+  const status = useMemo(() => issueStatus(issue, coverage), [issue, coverage]);
 
   const step = horizontal ? 112 : 66;
   const pos = (i: number): Point => (horizontal ? { x: 60 + i * step, y: 90 } : { x: 48, y: 44 + i * step });

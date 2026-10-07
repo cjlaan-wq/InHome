@@ -3,10 +3,10 @@ import { materials } from '../materials';
 import { Block, Cylinder } from '../primitives';
 import type { Vec3 } from '../layout';
 
-/** Glasvezel: FTU-kastje aan de muur. DSL: platte wandcontactdoos. */
+/** Glasvezel: FTU-kastje aan de achtermuur. DSL: platte wandcontactdoos. Voorkant wijst naar binnen (+z). */
 export function HouseConnection({ position, type }: { position: Vec3; type: ConnectionType }) {
   return (
-    <group position={position}>
+    <group position={position} rotation-y={-Math.PI / 2}>
       {type === 'fiber' ? (
         <>
           <Block size={[0.12, 0.42, 0.3]} material={materials.building} />

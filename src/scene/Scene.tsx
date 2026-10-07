@@ -5,6 +5,7 @@ import { CameraRig } from './CameraRig';
 import { Lights } from './Lights';
 import { NetworkChain } from './NetworkChain';
 import { PerfStats } from './PerfStats';
+import { useSceneLayout } from './useSceneLayout';
 
 const showPerf = new URLSearchParams(window.location.search).has('perf');
 
@@ -28,9 +29,19 @@ export default function Scene() {
         <circleGeometry args={[60, 64]} />
         <meshStandardMaterial color={colors.ground} />
       </mesh>
-      <NetworkChain />
-      <CameraRig />
+      <SceneContent />
       {showPerf && <PerfStats />}
     </Canvas>
+  );
+}
+
+/** Binnen het canvas: de layout wordt één keer berekend en gedeeld door scène en camera. */
+function SceneContent() {
+  const layout = useSceneLayout();
+  return (
+    <>
+      <NetworkChain layout={layout} />
+      <CameraRig layout={layout} />
+    </>
   );
 }

@@ -4,6 +4,7 @@ import { useActiveIssue } from '../state/issueStatus';
 import { useAppStore } from '../state/store';
 import { timings } from '../theme';
 import { ExploreOverview } from './ExploreOverview';
+import { HomeEditor } from './HomeEditor';
 import { IssueView } from './IssueView';
 import { NodeDetail } from './NodeDetail';
 
@@ -14,7 +15,8 @@ export function Panel() {
   const issue = useActiveIssue();
   const root = useRef<HTMLDivElement>(null);
 
-  const view = issue ? `issue:${issue.id}` : focusNodeId ? `node:${focusNodeId}` : 'overview';
+  const view =
+    mode === 'home' ? 'home' : issue ? `issue:${issue.id}` : focusNodeId ? `node:${focusNodeId}` : 'overview';
 
   // Nieuwe weergave: terug naar boven in de scrollende container (zijpaneel of bottom sheet).
   useEffect(() => {
@@ -32,7 +34,9 @@ export function Panel() {
           exit={{ opacity: 0, x: -12 }}
           transition={{ duration: timings.uiTransition }}
         >
-          {mode === 'issue' && issue ? (
+          {mode === 'home' ? (
+            <HomeEditor />
+          ) : mode === 'issue' && issue ? (
             <IssueView issue={issue} />
           ) : focusNodeId ? (
             <NodeDetail nodeId={focusNodeId} />

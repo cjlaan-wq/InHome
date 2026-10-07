@@ -1,18 +1,17 @@
 import { useMemo } from 'react';
 import { issueStatus, useActiveIssue } from '../state/issueStatus';
-import { useAppStore } from '../state/store';
+import type { Coverage } from '../state/coverage';
 import type { ResolvedPath } from './layout';
 import type { PacketBehaviour } from './links/Packets';
 
 const flow: PacketBehaviour = { kind: 'flow' };
 
 /** Vertaalt het gekozen probleem naar wat de scène laat zien: wie uitgelicht/gedimd is en hoe pakketjes bewegen. */
-export function useIssueScene() {
+export function useIssueScene(coverage: Coverage) {
   const issue = useActiveIssue();
-  const hasExtender = useAppStore((s) => s.hasExtender);
 
   return useMemo(() => {
-    const status = issueStatus(issue, hasExtender);
+    const status = issueStatus(issue, coverage);
 
     const behaviour = (path: ResolvedPath): PacketBehaviour => {
       if (!issue) return flow;
@@ -24,12 +23,13 @@ export function useIssueScene() {
         case 'slow':
           return affected ? { kind: 'flow', speedFactor: 0.3, problem: true } : flow;
         case 'weak-signal':
-          return affected ? { kind: 'fade' } : flow;
+          // Het zwakke apparaat, via welke bron dan ook (KPN Box of SuperWifi-punt).
+          return path.deviceId && status.affectedParts?.includes(path.deviceId) ? { kind: 'fade' } : flow;
         case 'device-only':
           return affected ? { kind: 'stop', stopAt: 0.85 } : flow;
       }
     };
 
     return { ...status, behaviour };
-  }, [issue, hasExtender]);
+  }, [issue, coverage]);
 }

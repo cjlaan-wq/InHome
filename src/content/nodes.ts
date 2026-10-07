@@ -97,9 +97,9 @@ export const nodes: NetworkNode[] = [
     summary: 'Je laptop, telefoon en tv.',
     connectionTypes: ['fiber', 'dsl'],
     parts: [
-      { id: 'laptop', label: 'Laptop', room: 'woonkamer' },
-      { id: 'tv', label: 'Tv', room: 'woonkamer' },
-      { id: 'phone', label: 'Telefoon', room: 'slaapkamer boven' },
+      { id: 'laptop', label: 'Laptop' },
+      { id: 'tv', label: 'Tv' },
+      { id: 'phone', label: 'Telefoon' },
     ],
   },
 ];

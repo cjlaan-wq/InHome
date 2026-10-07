@@ -19,8 +19,50 @@ export type DeviceId = 'laptop' | 'phone' | 'tv';
 export type DevicePart = {
   id: DeviceId;
   label: string;
-  /** Kamer waar het apparaat staat, voor uitleg over bereik. */
-  room: string;
+};
+
+/** Soort kamer: bepaalt het meubilair in de scène. */
+export type RoomKind = 'hall' | 'landing' | 'living' | 'kitchen' | 'bedroom' | 'office' | 'attic';
+
+/**
+ * Kamer als rechthoek op een verdieping, in scène-eenheden (≈ meters).
+ * x loopt van links (0) naar rechts, z van achter (-depth/2) naar voren.
+ */
+export type Room = {
+  id: string;
+  /** Naam zoals de klant hem gebruikt, bijv. 'Woonkamer'. */
+  label: string;
+  /** Hoe je zegt dat iets er staat. Standaard 'in de {label}', bijv. 'op zolder'. */
+  inPhrase?: string;
+  kind: RoomKind;
+  floor: number;
+  x: number;
+  z: number;
+  width: number;
+  depth: number;
+};
+
+export type HouseId = 'apartment' | 'terraced' | 'detached';
+
+/** Trap van een verdieping naar de volgende: loopt van voren (zFrom) omhoog naar achteren (zTo). */
+export type Stairs = { floor: number; x: number; width: number; zFrom: number; zTo: number };
+
+export type HousePreset = {
+  id: HouseId;
+  label: string;
+  description: string;
+  width: number;
+  depth: number;
+  rooms: Room[];
+  stairs: Stairs[];
+  /** Kamer met de meterkast: hier komt de kabel binnen. Moet tegen de achtermuur liggen. */
+  meterRoomId: string;
+  /** Waar alles staat als de klant nog niets heeft gekozen. */
+  defaults: {
+    modemRoomId: string;
+    extenderRoomId: string;
+    deviceRooms: Record<DeviceId, string>;
+  };
 };
 
 export type NetworkNode = {
@@ -70,6 +112,8 @@ export type Issue = {
   affectedNodes: NodeId[];
   /** Alleen deze apparaten zijn betrokken (bij 'devices' in affectedNodes). Leeg/ontbreekt = alle. */
   affectedParts?: DeviceId[];
+  /** Bepaal het betrokken apparaat uit het eigen huis: het apparaat met de zwakste wifi. */
+  affectedPartsFrom?: 'weakest-wifi';
   affectedLinks: string[];
   visualEffect: VisualEffect;
   steps: IssueStep[];

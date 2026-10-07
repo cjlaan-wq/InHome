@@ -20,6 +20,10 @@ export const colors = {
   indoorCable: '#9AA3AC',
   packet: '#7DFF6E',
   packetProblem: '#FF8A1F',
+  // Wifi-dekking per kamer (vloerkleur); in de UI altijd met woord + streepjes erbij.
+  coverageGood: '#3DD13D',
+  coverageFair: '#F5B700',
+  coverageWeak: '#F0642D',
   wifiRing: '#00C300',
 
   building: '#FFFFFF',

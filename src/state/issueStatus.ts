@@ -1,5 +1,6 @@
 import { getIssue, links } from '../content';
 import type { DeviceId, Issue, NodeId } from '../content/types';
+import type { Coverage } from './coverage';
 import { useAppStore } from './store';
 
 /** Hoe een onderdeel in beeld is: gewoon, betrokken bij het probleem, of naar de achtergrond. */
@@ -9,14 +10,25 @@ export type Status = 'normal' | 'affected' | 'dimmed';
 export const linkIndex = (linkId: string) => links.findIndex((link) => link.id === linkId);
 
 /**
+ * Betrokken apparaten. Bij 'weakest-wifi' komt dat uit jouw huis: het apparaat met de
+ * zwakste wifi – tenzij dat inmiddels goed is (bijv. dankzij een SuperWifi-punt).
+ * undefined = alle apparaten.
+ */
+export const affectedParts = (issue: Issue | undefined, coverage: Coverage): DeviceId[] | undefined => {
+  if (issue?.affectedPartsFrom === 'weakest-wifi') {
+    const weakest = coverage.weakestDevice;
+    return coverage.devices[weakest].quality === 'good' ? [] : [weakest];
+  }
+  return issue?.affectedParts;
+};
+
+/**
  * Status van onderdelen, apparaten en verbindingen voor het gekozen probleem.
  * Los van three.js, zodat zowel de 3D-scène als de 2D-fallback dit gebruiken.
  */
-export function issueStatus(issue: Issue | undefined, hasExtender: boolean) {
-  const partAffected = (part?: DeviceId) =>
-    !issue?.affectedParts?.length || part === undefined || issue.affectedParts.includes(part);
-  // Zwak signaal + SuperWifi-punt: het apparaat krijgt nu via het punt een goed signaal.
-  const solvedByExtender = issue?.visualEffect === 'weak-signal' && hasExtender;
+export function issueStatus(issue: Issue | undefined, coverage: Coverage) {
+  const parts = affectedParts(issue, coverage);
+  const partAffected = (part?: DeviceId) => parts === undefined || part === undefined || parts.includes(part);
   // Waar het netwerk 'breekt': alles stroomafwaarts daarvan krijgt niets meer.
   const breakIndex =
     issue?.visualEffect === 'blocked'
@@ -29,8 +41,9 @@ export function issueStatus(issue: Issue | undefined, hasExtender: boolean) {
     breakIndex,
     contextStatus: (issue ? 'dimmed' : 'normal') as Status,
     nodeStatus: (id: NodeId): Status => (!issue ? 'normal' : issue.affectedNodes.includes(id) ? 'affected' : 'dimmed'),
+    affectedParts: parts,
     partStatus: (part: DeviceId): Status => {
-      if (!issue || solvedByExtender) return 'normal';
+      if (!issue) return 'normal';
       return issue.affectedNodes.includes('devices') && partAffected(part) ? 'affected' : 'dimmed';
     },
     linkStatus: (linkId: string): Status =>

@@ -1,9 +1,11 @@
 import { useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { getActiveNodes, issueStepCount } from '../content';
+import { fillTemplate, getActiveNodes, issueStepCount } from '../content';
 import type { Fix, Issue } from '../content/types';
 import { t } from '../i18n';
+import { affectedParts } from '../state/issueStatus';
 import { useAppStore } from '../state/store';
+import { useHome } from '../state/useHome';
 import { timings } from '../theme';
 import { ExternalIcon, WarningIcon } from './Icons';
 import { useFocusOnMount } from './useFocusOnMount';
@@ -14,6 +16,9 @@ export function IssueView({ issue }: { issue: Issue }) {
   const setStep = useAppStore((s) => s.setStep);
   const backToExplore = useAppStore((s) => s.backToExplore);
   const title = useFocusOnMount<HTMLHeadingElement>();
+  const home = useHome();
+  // Teksten met {placeholders} invullen met jouw huis (bijv. 'je telefoon op de zolder').
+  const fill = (text: string) => fillTemplate(text, home.templateVars);
   // Pas na de eerste stapwissel gaat de focus naar de stap (bij openen staat hij op de titel).
   const openedAtStep = useRef(activeStep);
   const stepChanged = useRef(false);
@@ -58,10 +63,10 @@ export function IssueView({ issue }: { issue: Issue }) {
           >
             <StepHeading
               eyebrow={t('issue.step', { index: activeStep + 1, total })}
-              title={isFixes ? t('issue.fixesTitle') : step.title}
+              title={isFixes ? t('issue.fixesTitle') : fill(step.title)}
               autoFocus={stepChanged.current}
             />
-            {isFixes ? <Fixes issue={issue} /> : <p className="mt-2 leading-relaxed">{step.body}</p>}
+            {isFixes ? <Fixes issue={issue} fill={fill} /> : <p className="mt-2 leading-relaxed">{fill(step.body)}</p>}
           </motion.section>
         </AnimatePresence>
 
@@ -115,13 +120,18 @@ function StepHeading({ eyebrow, title, autoFocus }: { eyebrow: string; title: st
 function AffectedList({ issue }: { issue: Issue }) {
   const connectionType = useAppStore((s) => s.connectionType);
   const hasExtender = useAppStore((s) => s.hasExtender);
+  const home = useHome();
+  const parts = affectedParts(issue, home.coverage);
   const nodes = getActiveNodes(connectionType, hasExtender).filter((node) => issue.affectedNodes.includes(node.id));
 
   const items = nodes.flatMap<{ key: string; label: string }>((node) =>
-    node.parts && issue.affectedParts?.length
+    node.parts && parts
       ? node.parts
-          .filter((part) => issue.affectedParts!.includes(part.id))
-          .map((part) => ({ key: part.id, label: t('issue.affectedPart', { device: part.label, room: part.room }) }))
+          .filter((part) => parts.includes(part.id))
+          .map((part) => ({
+            key: part.id,
+            label: t('issue.affectedPart', { device: part.label, room: home.roomLabel(home.placement.deviceRooms[part.id]) }),
+          }))
       : [{ key: node.id, label: node.label }],
   );
 
@@ -165,13 +175,13 @@ function StepProgress({ total, active, onSelect }: { total: number; active: numb
   );
 }
 
-function Fixes({ issue }: { issue: Issue }) {
+function Fixes({ issue, fill }: { issue: Issue; fill: (text: string) => string }) {
   return (
     <div className="mt-2 flex flex-col gap-4">
       <p className="text-sm text-ink-muted">{t('issue.fixesIntro')}</p>
       <ol className="flex flex-col gap-3">
         {issue.fixes.map((fix, i) => (
-          <FixCard key={fix.title} fix={fix} index={i} />
+          <FixCard key={fix.title} fix={fix} index={i} fill={fill} />
         ))}
       </ol>
       <section className="rounded-xl bg-scene p-4" aria-labelledby="escalation-heading">
@@ -185,9 +195,11 @@ function Fixes({ issue }: { issue: Issue }) {
   );
 }
 
-function FixCard({ fix, index }: { fix: Fix; index: number }) {
+function FixCard({ fix, index, fill }: { fix: Fix; index: number; fill: (text: string) => string }) {
   const hasExtender = useAppStore((s) => s.hasExtender);
   const setHasExtender = useAppStore((s) => s.setHasExtender);
+  const place = useAppStore((s) => s.place);
+  const { coverage, placement } = useHome();
 
   return (
     <li className="rounded-xl border border-line p-4">
@@ -198,17 +210,22 @@ function FixCard({ fix, index }: { fix: Fix; index: number }) {
         >
           {index + 1}
         </span>
-        {fix.title}
+        {fill(fix.title)}
       </h4>
       <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm leading-relaxed marker:text-ink-muted">
         {fix.steps.map((step) => (
-          <li key={step}>{step}</li>
+          <li key={step}>{fill(step)}</li>
         ))}
       </ol>
       {fix.demo === 'extender' && (
         <button
           type="button"
-          onClick={() => setHasExtender(!hasExtender)}
+          // Zet het SuperWifi-punt meteen op de beste plek in jouw huis.
+          onClick={() =>
+            hasExtender
+              ? setHasExtender(false)
+              : place('extender', coverage.bestExtenderRoomId ?? placement.extenderRoomId)
+          }
           aria-pressed={hasExtender}
           className="mt-3 rounded-lg border border-kpn-green-dark px-3 py-2 text-sm font-medium text-kpn-green-dark hover:bg-scene focus-visible:outline-2 focus-visible:outline-kpn-green-dark"
         >

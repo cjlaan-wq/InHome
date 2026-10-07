@@ -5,6 +5,7 @@ import { issues } from './issues';
 
 export * from './types';
 export { nodes, links, issues };
+export { houses, getHouse, defaultHouseId } from './houses';
 
 const appliesTo = (type: ConnectionType) => (item: { connectionTypes: ConnectionType[] }) =>
   item.connectionTypes.includes(type);
@@ -32,3 +33,7 @@ export const issueStepFocus = (issue: Issue, step: number): NodeId =>
   step < issue.steps.length
     ? issue.steps[step].focusNodeId
     : (issue.fixesFocusNodeId ?? issue.steps[issue.steps.length - 1].focusNodeId);
+
+/** Vult {naam} in een contenttekst in met waarden uit het eigen huis (bijv. {weakRoom}). */
+export const fillTemplate = (text: string, vars: Record<string, string>) =>
+  text.replace(/\{(\w+)\}/g, (match, name: string) => vars[name] ?? match);

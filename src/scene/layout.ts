@@ -1,98 +1,39 @@
 import * as THREE from 'three';
-import type { ConnectionType, DeviceId, NodeId } from '../content/types';
+import type { ConnectionType, DeviceId, HousePreset, NodeId } from '../content/types';
+import type { Coverage } from '../state/coverage';
+import {
+  connectionSpot,
+  deviceOrder,
+  deviceSpots,
+  extenderSpot,
+  floorTop,
+  houseSize,
+  isCovered,
+  modemSpot,
+  roomById,
+  type HomePlacement,
+} from '../state/homeGeometry';
 
 // Ruimtelijke opbouw van de scène. Content (teksten) staat in src/content/;
 // hier staat alleen wáár iets staat. De keten loopt van achter-links (ver, KPN)
-// naar voor-rechts (dichtbij, je huis).
+// naar voor-rechts (dichtbij, je huis). Alles in en rond het huis wordt berekend
+// uit 'Jouw huis' (woningtype + in welke kamer alles staat).
 
 export type Vec3 = [number, number, number];
-
-/** Huis: footprint x 0..8, z -3..3. Begane grond tot y 2.6, verdieping daarboven. */
-export const house = {
-  width: 8,
-  depth: 6,
-  floorHeight: 2.6,
-  slab: 0.15,
-  wall: 0.15,
-  /** Binnenmuur tussen hal en woonkamer / overloop en slaapkamer. */
-  innerWallX: 3,
-  /** De verdieping ligt alleen achterin, zodat je de woonkamer van bovenaf kunt zien. */
-  upperFrontZ: -0.2,
-  /** Voorkant van het trapgat. */
-  stairTopZ: -0.6,
-} as const;
-
-const upper = house.floorHeight + house.slab;
-
-export const nodePositions: Record<NodeId, Vec3> = {
-  'kpn-core': [-17, 0, -15.5],
-  backbone: [-10.5, 0, -8.5],
-  'street-cabinet': [-4.5, 0, -2.6],
-  'house-connection': [0.2, 0.9, -2.2],
-  modem: [1.25, 1.12, -2.45],
-  wifi: [1.25, 1.4, -2.45],
-  extender: [3.6, upper + 0.2, -2.55],
-  devices: [5.5, 1, 0],
-};
-
-export const devicePositions: Record<DeviceId, Vec3> = {
-  laptop: [5.2, 0.92, 1.9],
-  tv: [3.12, 1.4, 0.2],
-  phone: [6.4, upper + 0.52, -1.5],
-};
-
-/** Waar het label boven een onderdeel zweeft. */
-export const labelOffset: Partial<Record<NodeId, Vec3>> = {
-  'kpn-core': [0, 4.6, 0],
-  backbone: [0, 1.4, 0],
-  'street-cabinet': [0, 2.2, 0],
-  'house-connection': [-1.7, 0.1, 0.6],
-  modem: [0.3, 1.0, 0],
-  wifi: [-3.4, -1.1, 3],
-  extender: [0, 0.6, 0],
-};
 
 /** Kijkrichting (van doel naar camera): van voren schuin omlaag, het open huis naar de camera. */
 export const viewDirection: Vec3 = [0.38, 0.62, 0.75];
 
-/** Lagere kijkrichting door de hal, voor onderdelen onder de overloop. */
-const hallDirection: Vec3 = [-0.05, 0.3, 0.95];
+/** Lagere kijkrichting van voren, voor onderdelen onder een hogere verdieping. */
+const lowDirection: Vec3 = [-0.05, 0.3, 0.95];
 
 /**
- * Camerafocus per onderdeel: waar de camera naar kijkt, hoe ver weg en (optioneel) vanuit welke richting.
+ * Camerafocus: waar de camera naar kijkt, hoe ver weg en (optioneel) vanuit welke richting.
  * Zonder richting kijkt de camera vanuit dezelfde hoek als het overzicht.
  */
 export type CameraFocus = { target: Vec3; distance: number; direction?: Vec3 };
 
-export const cameraFocus: Record<NodeId, CameraFocus> = {
-  'kpn-core': { target: [-15.8, 2, -15.3], distance: 15 },
-  backbone: { target: [-10.5, 0.3, -8.5], distance: 8 },
-  'street-cabinet': { target: [-4.5, 0.8, -2.6], distance: 7 },
-  'house-connection': { target: [0.6, 0.9, -2.2], distance: 4.5, direction: [0.15, 0.3, 0.95] },
-  modem: { target: [1.1, 1.05, -2.4], distance: 4.5, direction: hallDirection },
-  wifi: { target: [2.2, 1.4, -0.6], distance: 15 },
-  extender: { target: [3.8, 3, -2.3], distance: 6 },
-  devices: { target: [4.8, 1.8, -0.2], distance: 12 },
-};
-
-export const overview = { target: [-4, 0.5, -5] as Vec3, distance: 34 };
-
-/**
- * Onzichtbare klikzones per onderdeel (midden + afmeting). Los van de vormen zelf,
- * zodat kleine onderdelen makkelijk te raken zijn en modellen later te vervangen zijn.
- */
-export const hotspots: { nodeId: NodeId; partId?: DeviceId; center: Vec3; size: Vec3 }[] = [
-  { nodeId: 'kpn-core', center: [-16, 1.7, -15.3], size: [6.4, 3.6, 3.4] },
-  { nodeId: 'backbone', center: [-10.5, 0.4, -8.5], size: [2.4, 1, 2.2] },
-  { nodeId: 'street-cabinet', center: [-4.5, 0.75, -2.6], size: [1.8, 1.6, 1.2] },
-  { nodeId: 'house-connection', center: [0.3, 0.9, -2.2], size: [0.5, 0.7, 0.6] },
-  { nodeId: 'modem', center: [1.25, 1.12, -2.45], size: [0.5, 0.7, 0.6] },
-  { nodeId: 'wifi', center: [-2.15, 0.3, 0.55], size: [1.4, 0.8, 1.4] },
-  { nodeId: 'extender', center: [3.6, 2.95, -2.55], size: [0.6, 0.6, 0.6] },
-  { nodeId: 'devices', partId: 'laptop', center: [5.2, 1.05, 1.9], size: [0.8, 0.5, 0.7] },
-  { nodeId: 'devices', partId: 'tv', center: [3.2, 1.4, 0.2], size: [0.4, 1.1, 1.8] },
-  { nodeId: 'devices', partId: 'phone', center: [6.4, 3.3, -1.5], size: [0.6, 0.3, 0.6] },
-];
+export const overview: CameraFocus = { target: [-4, 0.5, -5], distance: 34 };
 
 /** Labels die ook op een smal scherm zichtbaar blijven; de rest staat in het paneel. */
 export const compactLabelNodes: NodeId[] = ['kpn-core', 'backbone', 'street-cabinet', 'modem'];
@@ -109,7 +50,38 @@ export type PathSpec = CablePath | AirPath;
 
 const cableY = 0.06;
 
-export const linkPaths: Record<string, PathSpec[]> = {
+// ── Buiten: vast ────────────────────────────────────────────────────────────
+
+const outdoorPositions = {
+  'kpn-core': [-17, 0, -15.5],
+  backbone: [-10.5, 0, -8.5],
+  'street-cabinet': [-4.5, 0, -2.6],
+} satisfies Partial<Record<NodeId, Vec3>>;
+
+const outdoorFocus = {
+  'kpn-core': { target: [-15.8, 2, -15.3], distance: 15 },
+  backbone: { target: [-10.5, 0.3, -8.5], distance: 8 },
+  'street-cabinet': { target: [-4.5, 0.8, -2.6], distance: 7 },
+} satisfies Partial<Record<NodeId, CameraFocus>>;
+
+const outdoorLabelOffset: Partial<Record<NodeId, Vec3>> = {
+  'kpn-core': [0, 4.6, 0],
+  backbone: [0, 1.4, 0],
+  'street-cabinet': [0, 2.2, 0],
+  'house-connection': [-1.1, 0.3, 0.7],
+  modem: [0.3, 0.75, 0],
+  extender: [0, 0.6, 0],
+};
+
+export type Hotspot = { nodeId: NodeId; partId?: DeviceId; center: Vec3; size: Vec3; floor?: number };
+
+const outdoorHotspots: Hotspot[] = [
+  { nodeId: 'kpn-core', center: [-16, 1.7, -15.3], size: [6.4, 3.6, 3.4] },
+  { nodeId: 'backbone', center: [-10.5, 0.4, -8.5], size: [2.4, 1, 2.2] },
+  { nodeId: 'street-cabinet', center: [-4.5, 0.75, -2.6], size: [1.8, 1.6, 1.2] },
+];
+
+const outdoorPaths: Record<string, PathSpec[]> = {
   'kpn-core__backbone': [
     {
       medium: 'cable',
@@ -134,38 +106,6 @@ export const linkPaths: Record<string, PathSpec[]> = {
       ],
     },
   ],
-  'street-cabinet__house-connection': [
-    {
-      medium: 'cable',
-      cable: 'copper-on-dsl',
-      points: [
-        [-3.9, cableY, -2.6],
-        [-2, cableY, -2.3],
-        [-0.3, cableY, -2.2],
-        [0.05, 0.3, -2.2],
-        [0.14, 0.88, -2.2],
-      ],
-    },
-  ],
-  'house-connection__modem': [
-    {
-      medium: 'cable',
-      cable: 'indoor',
-      points: [
-        [0.28, 0.85, -2.2],
-        [0.5, 0.82, -2.35],
-        [0.9, 0.82, -2.5],
-        [1.15, 0.9, -2.5],
-      ],
-    },
-  ],
-  wifi__devices: [
-    { medium: 'air', from: nodePositions.wifi, to: devicePositions.laptop, deviceId: 'laptop' },
-    { medium: 'air', from: nodePositions.wifi, to: devicePositions.tv, deviceId: 'tv' },
-    { medium: 'air', from: nodePositions.wifi, to: devicePositions.phone, deviceId: 'phone' },
-  ],
-  wifi__extender: [{ medium: 'air', from: nodePositions.wifi, to: nodePositions.extender }],
-  extender__devices: [{ medium: 'air', from: nodePositions.extender, to: devicePositions.phone, deviceId: 'phone' }],
 };
 
 /** Extra glasvezelkabels die naar andere wijken lopen (decor, worden niet uitgelicht). */
@@ -184,12 +124,165 @@ export const decorCables: Vec3[][] = [
 
 /** Buurhuizen rond de wijkkast: [x, z, rotatieY, schaal]. */
 export const neighborHouses: [number, number, number, number][] = [
-  [-0.5, -8.5, 0.05, 1],
-  [4.5, -9, -0.05, 0.9],
-  [9.5, -8.5, 0.05, 1.05],
+  [-0.5, -9.5, 0.05, 1],
+  [4.5, -10, -0.05, 0.9],
+  [9.5, -9.5, 0.05, 1.05],
   [-14, -1, Math.PI / 2, 0.95],
   [-13.5, 4.5, Math.PI / 2, 1],
 ];
+
+// ── Het huis: berekend ──────────────────────────────────────────────────────
+
+const add = (a: Vec3, b: Vec3): Vec3 => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+
+export type SceneLayout = ReturnType<typeof computeSceneLayout>;
+
+/**
+ * Alles wat afhangt van 'Jouw huis': posities, kabels, wifi-paden, camerastandpunten en klikzones.
+ * visibleFloor: hogere verdiepingen zijn verborgen (null = alles zichtbaar).
+ */
+export function computeSceneLayout(
+  house: HousePreset,
+  placement: HomePlacement,
+  hasExtender: boolean,
+  coverage: Coverage,
+  visibleFloor: number | null,
+) {
+  const D = house.depth;
+  const size = houseSize(house);
+  const meterRoom = roomById(house, house.meterRoomId);
+  const modemRoom = roomById(house, placement.modemRoomId);
+  const extenderRoom = roomById(house, placement.extenderRoomId);
+
+  const connection = connectionSpot(house) as Vec3;
+  const modem = modemSpot(modemRoom) as Vec3;
+  const wifi = add(modem, [0, 0.28, 0]);
+  const extender = extenderSpot(extenderRoom) as Vec3;
+  const devices = deviceSpots(house, placement) as Record<DeviceId, Vec3>;
+
+  const floorOf = {
+    'house-connection': meterRoom.floor,
+    modem: modemRoom.floor,
+    extender: extenderRoom.floor,
+    ...(Object.fromEntries(deviceOrder.map((id) => [id, roomById(house, placement.deviceRooms[id]).floor])) as Record<
+      DeviceId,
+      number
+    >),
+  };
+  const shown = (floor: number) => visibleFloor === null || floor <= visibleFloor;
+
+  const centroid = deviceOrder
+    .map((id) => devices[id])
+    .reduce<Vec3>((sum, p) => add(sum, [p[0] / 3, p[1] / 3, p[2] / 3]), [0, 0, 0]);
+  const spread = Math.max(...deviceOrder.map((id) => Math.hypot(devices[id][0] - centroid[0], devices[id][2] - centroid[2])));
+  const houseCenter: Vec3 = [house.width / 2, Math.min(size.height, (visibleFloor ?? size.floors - 1) * 2.75 + 2.75) / 2, 0];
+
+  const directionFor = (floor: number, p: Vec3) => (isCovered(house, floor, p[0], p[2]) ? lowDirection : undefined);
+
+  const nodePositions: Record<NodeId, Vec3> = {
+    ...outdoorPositions,
+    'house-connection': connection,
+    modem,
+    wifi,
+    extender,
+    devices: centroid,
+  } as Record<NodeId, Vec3>;
+
+  const labelOffset: Partial<Record<NodeId, Vec3>> = {
+    ...outdoorLabelOffset,
+    // Wifi-label links naast het huis, ter hoogte van de KPN Box.
+    wifi: [-1.8 - modem[0], -0.4, D / 2 - 1 - modem[2]],
+  };
+
+  const cameraFocus: Record<NodeId, CameraFocus> = {
+    ...outdoorFocus,
+    'house-connection': {
+      target: add(connection, [0.3, 0, 0]),
+      distance: 4.5,
+      direction: isCovered(house, meterRoom.floor, connection[0], connection[2]) ? [0.15, 0.3, 0.95] : undefined,
+    },
+    modem: { target: add(modem, [-0.1, -0.05, 0]), distance: 4.5, direction: directionFor(modemRoom.floor, modem) },
+    wifi: { target: houseCenter, distance: 13 + house.width * 0.4 },
+    extender: { target: extender, distance: 5.5, direction: directionFor(extenderRoom.floor, extender) },
+    devices: { target: centroid, distance: Math.max(10, 8 + spread * 1.4) },
+  } as Record<NodeId, CameraFocus>;
+
+  /** Camera bij 'Jouw huis': het hele (zichtbare) huis in beeld. */
+  const homeFocus: CameraFocus = { target: houseCenter, distance: 11 + Math.max(house.width, house.depth) * 0.9 };
+
+  const houseHotspots: Hotspot[] = [
+    { nodeId: 'house-connection', center: connection, size: [0.5, 0.6, 0.4], floor: meterRoom.floor },
+    { nodeId: 'modem', center: modem, size: [0.5, 0.7, 0.6], floor: modemRoom.floor },
+    { nodeId: 'wifi', center: add(wifi, labelOffset.wifi!), size: [1.4, 0.8, 1.4] },
+    { nodeId: 'extender', center: extender, size: [0.6, 0.6, 0.6], floor: extenderRoom.floor },
+    { nodeId: 'devices', partId: 'laptop', center: add(devices.laptop, [0, 0.12, 0]), size: [0.8, 0.5, 0.7], floor: floorOf.laptop },
+    { nodeId: 'devices', partId: 'tv', center: devices.tv, size: [1.7, 1.1, 0.4], floor: floorOf.tv },
+    { nodeId: 'devices', partId: 'phone', center: devices.phone, size: [0.6, 0.3, 0.6], floor: floorOf.phone },
+  ];
+  const hotspots = [...outdoorHotspots, ...houseHotspots].filter((spot) => spot.floor === undefined || shown(spot.floor));
+
+  // Kabel van de wijkkast achter het huis langs naar de aansluiting tegen de achtermuur.
+  const behind = -D / 2 - 0.6;
+  const streetCable: Vec3[] = [
+    [-3.9, cableY, -2.6],
+    [-2.4, cableY, behind],
+    [connection[0], cableY, behind],
+    [connection[0], cableY, -D / 2 - 0.05],
+    [connection[0], connection[1] - 0.25, -D / 2 + 0.05],
+    add(connection, [0, 0, -0.08]),
+  ];
+
+  // Binnenkabel: omlaag naar de vloer, langs de achtermuur (en zo nodig in de hoek omhoog) naar de KPN Box.
+  const wallZ = -D / 2 + 0.2;
+  const meterFloorY = floorTop(meterRoom.floor) + 0.08;
+  const modemFloorY = floorTop(modemRoom.floor) + 0.08;
+  const indoorCable: Vec3[] = [
+    add(connection, [0.1, -0.1, 0]),
+    [connection[0] + 0.1, meterFloorY, wallZ],
+    ...(modemRoom.floor !== meterRoom.floor
+      ? ([
+          [0.22, meterFloorY, wallZ],
+          [0.22, modemFloorY, wallZ],
+        ] as Vec3[])
+      : []),
+    [modem[0] - 0.15, modemFloorY, wallZ],
+    [modem[0] - 0.15, modemFloorY, modem[2]],
+    [modem[0] - 0.12, modem[1] - 0.2, modem[2]],
+  ];
+
+  // Wifi: elk apparaat krijgt zijn signaal van de beste bron (KPN Box of SuperWifi-punt).
+  const servedByExtender = (id: DeviceId) => hasExtender && coverage.devices[id].servedBy === 'extender';
+  const visibleDevices = deviceOrder.filter((id) => shown(floorOf[id]));
+
+  const linkPaths: Record<string, PathSpec[]> = {
+    ...outdoorPaths,
+    'street-cabinet__house-connection': [{ medium: 'cable', cable: 'copper-on-dsl', points: streetCable }],
+    'house-connection__modem': [{ medium: 'cable', cable: 'indoor', points: indoorCable }],
+    wifi__devices: visibleDevices
+      .filter((id) => !servedByExtender(id))
+      .map((id) => ({ medium: 'air' as const, from: wifi, to: devices[id], deviceId: id })),
+    wifi__extender: hasExtender && shown(extenderRoom.floor) ? [{ medium: 'air', from: wifi, to: extender }] : [],
+    extender__devices: visibleDevices
+      .filter(servedByExtender)
+      .map((id) => ({ medium: 'air' as const, from: extender, to: devices[id], deviceId: id })),
+  };
+
+  return {
+    house,
+    nodePositions,
+    devicePositions: devices,
+    labelOffset,
+    cameraFocus,
+    homeFocus,
+    hotspots,
+    linkPaths,
+    floorOf,
+    shown,
+    visibleFloor,
+  };
+}
+
+// ── Paden ───────────────────────────────────────────────────────────────────
 
 export type ResolvedPath = {
   linkId: string;
@@ -202,8 +295,19 @@ export type ResolvedPath = {
 
 const toVec = (v: Vec3) => new THREE.Vector3(...v);
 
+/** Kabels als rechte stukken met hoeken (zoals een echte kabel langs muren), wifi als boog door de lucht. */
 const buildCurve = (spec: PathSpec): THREE.Curve<THREE.Vector3> => {
-  if (spec.medium === 'cable') return new THREE.CatmullRomCurve3(spec.points.map(toVec), false, 'centripetal');
+  if (spec.medium === 'cable') {
+    if (spec.cable !== 'indoor' && spec.points.length <= 4)
+      return new THREE.CatmullRomCurve3(spec.points.map(toVec), false, 'centripetal');
+    const path = new THREE.CurvePath<THREE.Vector3>();
+    spec.points.slice(1).forEach((point, i) => {
+      const from = toVec(spec.points[i]);
+      const to = toVec(point);
+      if (from.distanceTo(to) > 0.001) path.add(new THREE.LineCurve3(from, to));
+    });
+    return path;
+  }
   const from = toVec(spec.from);
   const to = toVec(spec.to);
   const control = from.clone().lerp(to, 0.5);
@@ -211,28 +315,20 @@ const buildCurve = (spec: PathSpec): THREE.Curve<THREE.Vector3> => {
   return new THREE.QuadraticBezierCurve3(from, control, to);
 };
 
-const curveCache = new Map<PathSpec, THREE.Curve<THREE.Vector3>>();
-
-/** Alle actieve paden voor de huidige situatie. Met een SuperWifi-punt loopt de telefoon via het punt. */
-export const resolvePaths = (activeLinkIds: string[], hasExtender: boolean): ResolvedPath[] =>
+/** Alle actieve paden voor de huidige situatie. */
+export const resolvePaths = (linkPaths: Record<string, PathSpec[]>, activeLinkIds: string[]): ResolvedPath[] =>
   activeLinkIds.flatMap((linkId) =>
-    (linkPaths[linkId] ?? [])
-      .filter((spec) => !(hasExtender && linkId === 'wifi__devices' && spec.medium === 'air' && spec.deviceId === 'phone'))
-      .map((spec) => {
-        let curve = curveCache.get(spec);
-        if (!curve) {
-          curve = buildCurve(spec);
-          curveCache.set(spec, curve);
-        }
-        return {
-          linkId,
-          medium: spec.medium,
-          cable: spec.medium === 'cable' ? spec.cable : undefined,
-          deviceId: spec.medium === 'air' ? spec.deviceId : undefined,
-          curve,
-          length: curve.getLength(),
-        };
-      }),
+    (linkPaths[linkId] ?? []).map((spec) => {
+      const curve = buildCurve(spec);
+      return {
+        linkId,
+        medium: spec.medium,
+        cable: spec.medium === 'cable' ? spec.cable : undefined,
+        deviceId: spec.medium === 'air' ? spec.deviceId : undefined,
+        curve,
+        length: curve.getLength(),
+      };
+    }),
   );
 
 export const cableColorKey = (cable: CablePath['cable'], type: ConnectionType) =>

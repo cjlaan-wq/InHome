@@ -87,9 +87,12 @@ export const issues: Issue[] = [
     symptom: 'Dichtbij de KPN Box gaat het goed, maar in een kamer verderop is het traag.',
     connectionTypes: ['fiber', 'dsl'],
     affectedNodes: ['wifi', 'devices'],
-    affectedParts: ['phone'],
+    // Het betrokken apparaat komt uit 'Jouw huis': het apparaat met de zwakste wifi.
+    affectedPartsFrom: 'weakest-wifi',
     affectedLinks: [linkId('wifi', 'devices')],
     visualEffect: 'weak-signal',
+    // Teksten met {…} worden ingevuld met jouw huis:
+    // {weakDevice}, {weakRoomIn}, {weakObstacles}, {modemRoomIn}, {adviceModemRoom}, {adviceExtenderRoomIn}.
     steps: [
       {
         focusNodeId: 'wifi',
@@ -99,12 +102,12 @@ export const issues: Issue[] = [
       {
         focusNodeId: 'devices',
         title: 'Muren en vloeren houden wifi tegen',
-        body: 'Je telefoon ligt boven in de slaapkamer. Het signaal moet door een vloer en een muur. Daardoor komt er minder aan en is je internet traag.',
+        body: 'Je {weakDevice} staat {weakRoomIn}. Het signaal moet daar door {weakObstacles}. Daardoor komt er minder aan en is je internet traag.',
       },
       {
         focusNodeId: 'modem',
         title: 'Waar staat je KPN Box?',
-        body: 'Je KPN Box staat nu in de meterkast, in een hoek van het huis. Vanuit een kast of hoek komt het signaal minder ver.',
+        body: 'Je KPN Box staat nu {modemRoomIn}. Vanuit een kast of een hoek van het huis komt het signaal minder ver.',
       },
     ],
     fixesFocusNodeId: 'wifi',
@@ -112,7 +115,7 @@ export const issues: Issue[] = [
       {
         title: 'Zet je KPN Box op een betere plek',
         steps: [
-          'Zet je KPN Box zo centraal mogelijk in huis.',
+          'Zet je KPN Box zo centraal mogelijk in huis. In jouw huis is de {adviceModemRoom} een goede plek.',
           'Zet hem hoog en vrij, bijvoorbeeld op een kast.',
           'Liever niet in een dichte kast, achter de tv of op de grond.',
         ],
@@ -127,7 +130,7 @@ export const issues: Issue[] = [
       {
         title: 'Overweeg een SuperWifi-punt',
         steps: [
-          'Een SuperWifi-punt zet je tussen je KPN Box en de kamer waar het traag is.',
+          'Een SuperWifi-punt zet je tussen je KPN Box en de kamer waar het traag is. In jouw huis bijvoorbeeld {adviceExtenderRoomIn}.',
           'Het vangt het signaal op en zendt het verder uit.',
           'Zo heb je ook verder weg in huis goede wifi.',
         ],

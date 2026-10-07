@@ -4,6 +4,7 @@ import { useAppStore } from '../state/store';
 import { ConnectionToggle } from './ConnectionToggle';
 import { ExtenderToggle } from './ExtenderToggle';
 import { useFocusOnMount } from './useFocusOnMount';
+import { useHome } from '../state/useHome';
 
 /** Startweergave van het paneel: verbinding kiezen, probleem kiezen of een onderdeel bekijken. */
 export function ExploreOverview() {
@@ -14,6 +15,8 @@ export function ExploreOverview() {
   const issues = getIssues(connectionType);
   const nodes = getActiveNodes(connectionType, hasExtender);
   const heading = useFocusOnMount<HTMLHeadingElement>();
+  const openHome = useAppStore((s) => s.openHome);
+  const home = useHome();
 
   return (
     <div className="flex flex-col gap-6 p-5">
@@ -51,6 +54,23 @@ export function ExploreOverview() {
             ))}
           </ul>
         )}
+      </section>
+
+      <section aria-labelledby="home-card-heading" className="rounded-xl bg-scene p-4">
+        <h3 id="home-card-heading" className="font-semibold">
+          {t('home.cardTitle')}
+        </h3>
+        <p className="mt-1 text-sm text-ink-muted">
+          {t('home.cardSummary', { house: home.house.label, roomIn: home.roomIn(home.placement.modemRoomId) })}
+        </p>
+        <p className="mt-1 text-sm">{t('home.cardBody')}</p>
+        <button
+          type="button"
+          onClick={openHome}
+          className="mt-3 rounded-lg bg-kpn-green-dark px-4 py-2 text-sm font-medium text-white hover:bg-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-kpn-green-dark"
+        >
+          {t('home.open')} →
+        </button>
       </section>
 
       <section aria-labelledby="nodes-heading">

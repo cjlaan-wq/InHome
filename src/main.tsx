@@ -8,3 +8,10 @@ createRoot(document.getElementById('root')!).render(
     <App />
   </StrictMode>,
 );
+
+// Ontwikkelhulp: de store bekijken vanuit de browserconsole (alleen in dev).
+if (import.meta.env.DEV) {
+  void import('./state/store').then(({ useAppStore }) => {
+    (window as unknown as { __store: typeof useAppStore }).__store = useAppStore;
+  });
+}

@@ -2,6 +2,8 @@ import { getActiveNodes } from '../content';
 import type { NodeId } from '../content/types';
 import { t } from '../i18n';
 import { useAppStore } from '../state/store';
+import { qualityWord, useHome } from '../state/useHome';
+import { SignalBars } from './SignalBars';
 import { useFocusOnMount } from './useFocusOnMount';
 
 /** Uitleg over één onderdeel, met vorige/volgende om de keten door te lopen. */
@@ -11,6 +13,7 @@ export function NodeDetail({ nodeId }: { nodeId: NodeId }) {
   const focusNode = useAppStore((s) => s.focusNode);
   // Focus naar de kop, zodat toetsenbord- en schermlezergebruikers meteen bij de uitleg zijn.
   const heading = useFocusOnMount<HTMLHeadingElement>();
+  const home = useHome();
 
   const nodes = getActiveNodes(connectionType, hasExtender);
   const index = nodes.findIndex((node) => node.id === nodeId);
@@ -50,7 +53,13 @@ export function NodeDetail({ nodeId }: { nodeId: NodeId }) {
             {node.parts.map((part) => (
               <li key={part.id} className="flex justify-between rounded-lg bg-scene px-3 py-2">
                 <span className="font-medium">{part.label}</span>
-                <span className="text-ink-muted">{t('node.partRoom', { room: part.room })}</span>
+                <span className="flex items-center gap-2 text-ink-muted">
+                  {t('node.partRoomCoverage', {
+                    roomIn: home.deviceRoomIn(part.id),
+                    quality: qualityWord(home.coverage.devices[part.id].quality),
+                  })}
+                  <SignalBars quality={home.coverage.devices[part.id].quality} />
+                </span>
               </li>
             ))}
           </ul>

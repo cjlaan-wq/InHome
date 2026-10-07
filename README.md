@@ -26,3 +26,10 @@ Content (onderdelen, verbindingen, problemen) staat in `src/content/`; kleuren e
 `vercel.json` bevat de build-instellingen. Importeer de repository in Vercel
 (Add New → Project → `cjlaan-wq/inhome`); Vite wordt herkend en elke push
 krijgt een eigen preview-URL.
+
+## Jouw huis
+
+Woningtypes staan in `src/content/houses.ts` (kamers als rechthoeken per verdieping).
+Het indicatieve wifi-dekkingsmodel staat in `src/state/coverage.ts` – **concept**, de
+getallen staan bovenaan bij elkaar. Een huis is te delen via de link, bijvoorbeeld
+`?huis=detached&box=hal&laptop=werkkamer&tv=woonkamer&telefoon=zolder&superwifi=overloop`.

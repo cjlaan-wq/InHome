@@ -36,7 +36,7 @@ export function BottomSheet({ children }: { children: ReactNode }) {
       >
         <span className="h-1.5 w-10 rounded-full bg-line" />
       </button>
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)]">
+      <div data-scroll className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)]">
         {children}
       </div>
     </motion.section>

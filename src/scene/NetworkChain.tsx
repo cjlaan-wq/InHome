@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { getActiveNodes, getLinks } from '../content';
 import { useAppStore } from '../state/store';
 import { usePrefersReducedMotion } from '../app/hooks';
+import { Hotspots } from './Hotspots';
 import { Labels } from './Labels';
 import { cableColorKey, decorCables, nodePositions, resolvePaths } from './layout';
 import { Cable } from './links/Cable';
@@ -69,6 +70,7 @@ export function NetworkChain() {
         ))}
       <Packets paths={paths} connectionType={connectionType} animate={animate} />
 
+      <Hotspots activeNodeIds={nodes.map((node) => node.id)} />
       <Labels nodes={nodes} />
     </group>
   );

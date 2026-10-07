@@ -11,4 +11,8 @@ export const setLocale = (next: Locale) => {
   locale = next;
 };
 
-export const t = (key: MessageKey): string => dictionaries[locale][key] ?? key;
+/** Vertaalt een sleutel; {naam} in de tekst wordt vervangen door vars.naam. */
+export const t = (key: MessageKey, vars?: Record<string, string | number>): string => {
+  const text = dictionaries[locale][key] ?? key;
+  return vars ? text.replace(/\{(\w+)\}/g, (_, name: string) => String(vars[name] ?? `{${name}}`)) : text;
+};

@@ -29,7 +29,7 @@ export function Packets({ paths, connectionType, animate }: Props) {
         const count = Math.max(2, Math.round(path.length / timings.packetSpacing));
         const isCopper = connectionType === 'dsl' && path.cable === 'copper-on-dsl';
         const speed = (timings.packetSpeed * (isCopper ? timings.dslPacketSpeedFactor : 1)) / path.length;
-        const size = path.medium === 'air' ? 0.06 : 0.1;
+        const size = path.medium === 'air' ? 0.06 : path.cable === 'indoor' ? 0.045 : 0.1;
         return Array.from({ length: count }, (_, i) => ({ path, offset: i / count, speed, size }));
       }),
     [paths, connectionType],

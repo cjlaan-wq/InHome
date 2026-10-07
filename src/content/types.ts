@@ -28,13 +28,15 @@ export type NetworkNode = {
   label: string; // kort label in de scène
   title: string; // kop in het paneel
   description: string; // uitleg in eenvoudige taal over wat dit onderdeel doet
+  /** Eén korte zin voor de tooltip in de scène. */
+  summary: string;
   connectionTypes: ConnectionType[];
   /** Subonderdelen, alleen voor 'devices'. */
   parts?: DevicePart[];
   /** Optioneel onderdeel dat de klant wel of niet heeft (bijv. SuperWifi). */
   optional?: boolean;
   /** Optionele teksten die per verbindingstype afwijken (bijv. FTU vs. wandcontactdoos). */
-  variants?: Partial<Record<ConnectionType, Partial<Pick<NetworkNode, 'label' | 'title' | 'description'>>>>;
+  variants?: Partial<Record<ConnectionType, Partial<Pick<NetworkNode, 'label' | 'title' | 'description' | 'summary'>>>>;
 };
 
 export type NetworkLink = {

@@ -52,8 +52,56 @@ export const labelOffset: Partial<Record<NodeId, Vec3>> = {
   extender: [0, 0.6, 0],
 };
 
+/** Kijkrichting (van doel naar camera): van voren schuin omlaag, het open huis naar de camera. */
+export const viewDirection: Vec3 = [0.38, 0.62, 0.75];
+
+/** Lagere kijkrichting door de hal, voor onderdelen onder de overloop. */
+const hallDirection: Vec3 = [-0.05, 0.3, 0.95];
+
+/**
+ * Camerafocus per onderdeel: waar de camera naar kijkt, hoe ver weg en (optioneel) vanuit welke richting.
+ * Zonder richting kijkt de camera vanuit dezelfde hoek als het overzicht.
+ */
+export type CameraFocus = { target: Vec3; distance: number; direction?: Vec3 };
+
+export const cameraFocus: Record<NodeId, CameraFocus> = {
+  'kpn-core': { target: [-15.8, 2, -15.3], distance: 15 },
+  backbone: { target: [-10.5, 0.3, -8.5], distance: 8 },
+  'street-cabinet': { target: [-4.5, 0.8, -2.6], distance: 7 },
+  'house-connection': { target: [0.6, 0.9, -2.2], distance: 4.5, direction: [0.15, 0.3, 0.95] },
+  modem: { target: [1.1, 1.05, -2.4], distance: 4.5, direction: hallDirection },
+  wifi: { target: [2.2, 1.4, -0.6], distance: 15 },
+  extender: { target: [3.8, 3, -2.3], distance: 6 },
+  devices: { target: [4.8, 1.8, -0.2], distance: 12 },
+};
+
+export const overview = { target: [-4, 0.5, -5] as Vec3, distance: 34 };
+
+/**
+ * Onzichtbare klikzones per onderdeel (midden + afmeting). Los van de vormen zelf,
+ * zodat kleine onderdelen makkelijk te raken zijn en modellen later te vervangen zijn.
+ */
+export const hotspots: { nodeId: NodeId; partId?: DeviceId; center: Vec3; size: Vec3 }[] = [
+  { nodeId: 'kpn-core', center: [-16, 1.7, -15.3], size: [6.4, 3.6, 3.4] },
+  { nodeId: 'backbone', center: [-10.5, 0.4, -8.5], size: [2.4, 1, 2.2] },
+  { nodeId: 'street-cabinet', center: [-4.5, 0.75, -2.6], size: [1.8, 1.6, 1.2] },
+  { nodeId: 'house-connection', center: [0.3, 0.9, -2.2], size: [0.5, 0.7, 0.6] },
+  { nodeId: 'modem', center: [1.25, 1.12, -2.45], size: [0.5, 0.7, 0.6] },
+  { nodeId: 'wifi', center: [-2.15, 0.3, 0.55], size: [1.4, 0.8, 1.4] },
+  { nodeId: 'extender', center: [3.6, 2.95, -2.55], size: [0.6, 0.6, 0.6] },
+  { nodeId: 'devices', partId: 'laptop', center: [5.2, 1.05, 1.9], size: [0.8, 0.5, 0.7] },
+  { nodeId: 'devices', partId: 'tv', center: [3.2, 1.4, 0.2], size: [0.4, 1.1, 1.8] },
+  { nodeId: 'devices', partId: 'phone', center: [6.4, 3.3, -1.5], size: [0.6, 0.3, 0.6] },
+];
+
 /** Labels die ook op een smal scherm zichtbaar blijven; de rest staat in het paneel. */
 export const compactLabelNodes: NodeId[] = ['kpn-core', 'backbone', 'street-cabinet', 'modem'];
+
+/** Labelpositie in close-up: vlak bij het onderdeel (de overzichtspositie kan dan buiten beeld vallen). */
+export const focusedLabelOffset: Partial<Record<NodeId, Vec3>> = {
+  'house-connection': [0, 0.45, 0],
+  modem: [0, 0.5, 0],
+};
 
 type CablePath = { medium: 'cable'; points: Vec3[]; cable: 'fiber' | 'copper-on-dsl' | 'indoor' };
 type AirPath = { medium: 'air'; from: Vec3; to: Vec3; deviceId?: DeviceId };

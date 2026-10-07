@@ -1,0 +1,31 @@
+@import 'tailwindcss';
+
+/* Spiegelt src/theme/index.ts zodat Tailwind-classes dezelfde tokens gebruiken. */
+@theme {
+  --color-kpn-green: #00c300;
+  --color-kpn-green-dark: #008a00;
+  --color-warning: #f28c28;
+  --color-error: #e5412d;
+  --color-dimmed: #b8bec6;
+  --color-ink: #1a1f24;
+  --color-ink-muted: #5a646e;
+  --color-surface: #ffffff;
+  --color-line: #dce1e6;
+  --color-scene: #eef2f5;
+
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-scene);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}

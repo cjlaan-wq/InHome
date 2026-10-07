@@ -20,3 +20,9 @@ Content (onderdelen, verbindingen, problemen) staat in `src/content/`; kleuren e
 
 - `Esc` – terug naar het overzicht
 - `←` / `→` – vorige/volgende stap bij een probleem
+
+## Deploy (Vercel)
+
+`vercel.json` bevat de build-instellingen. Importeer de repository in Vercel
+(Add New → Project → `cjlaan-wq/inhome`); Vite wordt herkend en elke push
+krijgt een eigen preview-URL.

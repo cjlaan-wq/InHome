@@ -34,6 +34,8 @@ export const colors = {
   cabinet: '#7F938A',
   furniture: '#D3D8DD',
   fabric: '#AFC3D6',
+  grass: '#D3EAC8',
+  plant: '#86C277',
   device: '#2B3138',
   screen: '#3D4B5A',
   ledOn: '#00C300',

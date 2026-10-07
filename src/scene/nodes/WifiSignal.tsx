@@ -15,12 +15,14 @@ type Props = {
   radius: number;
   animate: boolean;
   status?: Status;
+  /** Pulssnelheid t.o.v. normaal (5 GHz: sneller, 2,4 GHz: rustiger). */
+  pace?: number;
 };
 
 const statusColor: Record<Status, string> = { normal: colors.wifiRing, affected: colors.warning, dimmed: colors.dimmed };
 
 /** Wifi als zacht uitdijende ringen plus een vage koepel die het bereik laat zien. */
-export function WifiSignal({ position, radius, animate, status = 'normal' }: Props) {
+export function WifiSignal({ position, radius, animate, status = 'normal', pace = 1 }: Props) {
   const rings = useRef<THREE.Mesh[]>([]);
   const ringMaterials = useMemo(
     () =>
@@ -51,7 +53,7 @@ export function WifiSignal({ position, radius, animate, status = 'normal' }: Pro
   const place = (time: number) => {
     rings.current.forEach((ring, i) => {
       if (!ring) return;
-      const progress = animate ? (time / timings.wifiPulse + i / ringCount) % 1 : (i + 1) / (ringCount + 1);
+      const progress = animate ? ((time * pace) / timings.wifiPulse + i / ringCount) % 1 : (i + 1) / (ringCount + 1);
       const scale = 0.3 + progress * (radius - 0.3);
       ring.scale.set(scale, 1, scale);
       ringMaterials[i].opacity = (status === 'dimmed' ? 0.25 : 0.55) * (1 - progress) ** 1.5;

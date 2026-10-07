@@ -1,11 +1,49 @@
-import { houses } from '../content';
-import type { HouseId, HousePreset } from '../content/types';
+import { houses, nodes } from '../content';
+import type { HouseId, HousePreset, WallType } from '../content/types';
 import { t } from '../i18n';
 import { deviceOrder, houseSize, maxExtenders } from '../state/homeGeometry';
 import { extenderItem, useAppStore, type PlaceableId } from '../state/store';
 import { qualityWord, useHome } from '../state/useHome';
 import { SignalBars } from './SignalBars';
 import { useFocusOnMount } from './useFocusOnMount';
+
+/** Apparaten die met een netwerkkabel op de KPN Box kunnen (uit de content). */
+const wireable = new Set(nodes.find((node) => node.id === 'devices')?.parts?.filter((p) => p.wireable).map((p) => p.id));
+
+const wallOptions: { id: WallType; label: 'home.wallsLight' | 'home.wallsBrick' | 'home.wallsConcrete' }[] = [
+  { id: 'light', label: 'home.wallsLight' },
+  { id: 'brick', label: 'home.wallsBrick' },
+  { id: 'concrete', label: 'home.wallsConcrete' },
+];
+
+/** Muurtype: bepaalt in het dekkingsmodel hoeveel muren en vloeren tegenhouden. */
+function WallPicker() {
+  const wallType = useAppStore((s) => s.placement.wallType);
+  const setWallType = useAppStore((s) => s.setWallType);
+  return (
+    <fieldset>
+      <legend className="mb-2 font-semibold">{t('home.walls')}</legend>
+      <div className="flex gap-1 rounded-xl bg-scene p-1">
+        {wallOptions.map((option) => (
+          <label
+            key={option.id}
+            className="flex-1 cursor-pointer rounded-lg px-2 py-1.5 text-center text-sm font-medium has-checked:bg-surface has-checked:shadow-sm has-focus-visible:outline-2 has-focus-visible:outline-kpn-green-dark"
+          >
+            <input
+              type="radio"
+              name="wall-type"
+              checked={wallType === option.id}
+              onChange={() => setWallType(option.id)}
+              className="sr-only"
+            />
+            {t(option.label)}
+          </label>
+        ))}
+      </div>
+      <p className="mt-1 text-xs text-ink-muted">{t('home.wallsHint')}</p>
+    </fieldset>
+  );
+}
 
 const floorLabel = (floor: number) => t(`home.floor${Math.min(floor, 2)}` as 'home.floor0');
 
@@ -18,6 +56,7 @@ export function HomeEditor() {
   const setHouse = useAppStore((s) => s.setHouse);
   const place = useAppStore((s) => s.place);
   const resetHome = useAppStore((s) => s.resetHome);
+  const setDeviceWired = useAppStore((s) => s.setDeviceWired);
 
   return (
     <article className="flex flex-col gap-6 p-5" aria-labelledby="home-title">
@@ -60,6 +99,8 @@ export function HomeEditor() {
         </div>
       </fieldset>
 
+      <WallPicker />
+
       <FloorPicker house={house} />
 
       <section aria-labelledby="modem-heading" className="flex flex-col gap-2">
@@ -76,9 +117,23 @@ export function HomeEditor() {
           {t('home.devices')}
         </h3>
         {deviceOrder.map((id) => (
-          <div key={id} className="grid grid-cols-[6rem_1fr] items-center gap-2 text-sm">
+          <div key={id} className="grid grid-cols-[6rem_1fr_auto] items-center gap-2 text-sm">
             <label htmlFor={`room-${id}`}>{home.deviceLabel(id)}</label>
             <RoomSelect house={house} item={id} label={home.deviceLabel(id)} value={placement.deviceRooms[id]} onChange={place} />
+            {wireable.has(id) ? (
+              <label className="flex items-center gap-1.5 whitespace-nowrap text-xs">
+                <input
+                  type="checkbox"
+                  checked={placement.wiredDevices.includes(id)}
+                  onChange={(e) => setDeviceWired(id, e.target.checked)}
+                  aria-label={t('home.wiredLabel', { device: home.deviceLabel(id) })}
+                  className="size-4 accent-kpn-green-dark"
+                />
+                {t('home.wired')}
+              </label>
+            ) : (
+              <span />
+            )}
           </div>
         ))}
         <p className="text-xs text-ink-muted">{t('home.dragHint')}</p>
@@ -97,7 +152,14 @@ export function HomeEditor() {
                 <span>
                   <span className="font-medium">{room.label}</span>
                   {devicesHere.length > 0 && (
-                    <span className="text-ink-muted"> · {devicesHere.map(home.deviceLabel).join(', ')}</span>
+                    <span className="text-ink-muted">
+                      {' · '}
+                      {devicesHere
+                        .map((id) =>
+                          placement.wiredDevices.includes(id) ? `${home.deviceLabel(id)} (${t('home.servedByCable')})` : home.deviceLabel(id),
+                        )
+                        .join(', ')}
+                    </span>
                   )}
                 </span>
                 <span className="flex shrink-0 items-center gap-2 text-ink-muted">
@@ -138,6 +200,7 @@ function Extenders() {
   const place = useAppStore((s) => s.place);
   const addExtender = useAppStore((s) => s.addExtender);
   const removeExtender = useAppStore((s) => s.removeExtender);
+  const setExtenderWired = useAppStore((s) => s.setExtenderWired);
   const ids = placement.extenderRoomIds;
   const full = ids.length >= maxExtenders;
   // Nieuw punt: in de kamer waar het het meest helpt, anders de standaardkamer.
@@ -168,8 +231,21 @@ function Extenders() {
                 ✕
               </button>
             </div>
+            <label className="flex items-center gap-2 text-xs">
+              <input
+                type="checkbox"
+                checked={placement.wiredExtenders[i] ?? false}
+                onChange={(e) => setExtenderWired(i, e.target.checked)}
+                className="size-4 accent-kpn-green-dark"
+              />
+              {t('home.extenderWired')}
+            </label>
             <p className="text-xs text-ink-muted">
-              {feed >= 0 ? t('home.extenderFedByExtender', { n: feed + 1 }) : t('home.extenderFedByModem')}
+              {feed === -2
+                ? t('home.extenderFedByCable')
+                : feed >= 0
+                  ? t('home.extenderFedByExtender', { n: feed + 1 })
+                  : t('home.extenderFedByModem')}
             </p>
           </div>
         );
@@ -191,6 +267,7 @@ function Advice() {
   const home = useHome();
   const place = useAppStore((s) => s.place);
   const addExtender = useAppStore((s) => s.addExtender);
+  const setDeviceWired = useAppStore((s) => s.setDeviceWired);
   const { coverage } = home;
   const weakest = coverage.devices[coverage.weakestDevice];
 
@@ -231,7 +308,15 @@ function Advice() {
           </ApplyButton>
         </>
       )}
-      {!modemRoom && !extenderRoom && <p>{t('home.adviceCloser', { device })}</p>}
+      {wireable.has(coverage.weakestDevice) && (
+        <>
+          <p>{t('home.adviceWire', { device })}</p>
+          <ApplyButton onClick={() => setDeviceWired(coverage.weakestDevice, true)}>
+            {t('home.adviceWireApply', { device })}
+          </ApplyButton>
+        </>
+      )}
+      {!modemRoom && !extenderRoom && !wireable.has(coverage.weakestDevice) && <p>{t('home.adviceCloser', { device })}</p>}
     </div>
   );
 }

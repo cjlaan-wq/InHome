@@ -44,7 +44,7 @@ export const focusedLabelOffset: Partial<Record<NodeId, Vec3>> = {
   modem: [0, 0.5, 0],
 };
 
-type CablePath = { medium: 'cable'; points: Vec3[]; cable: 'fiber' | 'copper-on-dsl' | 'indoor' };
+type CablePath = { medium: 'cable'; points: Vec3[]; cable: 'fiber' | 'copper-on-dsl' | 'indoor'; deviceId?: DeviceId };
 type AirPath = { medium: 'air'; from: Vec3; to: Vec3; deviceId?: DeviceId };
 export type PathSpec = CablePath | AirPath;
 
@@ -242,6 +242,7 @@ export function computeSceneLayout(
     { nodeId: 'devices', partId: 'laptop', center: add(devices.laptop, [0, 0.12, 0]), size: [0.8, 0.5, 0.7], floor: floorOf.laptop },
     { nodeId: 'devices', partId: 'tv', center: devices.tv, size: [1.7, 1.1, 0.4], floor: floorOf.tv },
     { nodeId: 'devices', partId: 'phone', center: devices.phone, size: [0.6, 0.3, 0.6], floor: floorOf.phone },
+    { nodeId: 'devices', partId: 'camera', center: devices.camera, size: [0.45, 0.45, 0.45], floor: floorOf.camera },
   ];
   const hotspots = [...outdoorHotspots, ...houseHotspots].filter((spot) => spot.floor === undefined || shown(spot.floor));
 
@@ -274,11 +275,35 @@ export function computeSceneLayout(
     [modem[0] - 0.12, modem[1] - 0.2, modem[2]],
   ];
 
+  // Netwerkkabel van de KPN Box naar een apparaat of SuperWifi-punt: langs de vloer
+  // (en zo nodig in de achterhoek omhoog of omlaag naar een andere verdieping).
+  const cableFromModem = (to: Vec3, toFloor: number): Vec3[] => {
+    const toFloorY = floorTop(toFloor) + 0.08;
+    return [
+      [modem[0] + 0.12, modem[1] - 0.2, modem[2]],
+      [modem[0] + 0.12, modemFloorY, modem[2]],
+      ...(toFloor !== modemRoom.floor
+        ? ([
+            [0.22, modemFloorY, modem[2]],
+            [0.22, modemFloorY, wallZ],
+            [0.22, toFloorY, wallZ],
+            [0.22, toFloorY, to[2]],
+          ] as Vec3[])
+        : []),
+      [to[0], toFloorY, toFloor !== modemRoom.floor ? to[2] : modem[2]],
+      [to[0], toFloorY, to[2]],
+      [to[0], to[1] - 0.15, to[2]],
+    ];
+  };
+
   // Wifi: elk apparaat krijgt zijn signaal van de beste bron (KPN Box of een SuperWifi-punt);
   // SuperWifi-punten krijgen het hunne van de KPN Box of van een ander punt (mesh).
+  const wired = (id: DeviceId) => coverage.devices[id].servedBy === 'cable';
   const servingExtender = (id: DeviceId) =>
     hasExtender && coverage.devices[id].servedBy === 'extender' ? coverage.devices[id].extenderIndex : undefined;
   const visibleDevices = deviceOrder.filter((id) => shown(floorOf[id]));
+  const wifiDevices = visibleDevices.filter((id) => !wired(id));
+  const extenderWired = (i: number) => (coverage.extenderFeeds[i] ?? -1) === -2;
   const feedPosition = (index: number) => {
     const feed = coverage.extenderFeeds[index] ?? -1;
     return feed >= 0 ? extenders[feed] : wifi;
@@ -288,14 +313,24 @@ export function computeSceneLayout(
     ...outdoorPaths,
     'street-cabinet__house-connection': [{ medium: 'cable', cable: 'copper-on-dsl', points: streetCable }],
     'house-connection__modem': [{ medium: 'cable', cable: 'indoor', points: indoorCable }],
-    wifi__devices: visibleDevices
+    wifi__devices: wifiDevices
       .filter((id) => servingExtender(id) === undefined)
       .map((id) => ({ medium: 'air' as const, from: wifi, to: devices[id], deviceId: id })),
+    modem__devices: visibleDevices.filter(wired).map((id) => ({
+      medium: 'cable' as const,
+      cable: 'indoor' as const,
+      points: cableFromModem(devices[id], floorOf[id]),
+      deviceId: id,
+    })),
     wifi__extender: extenders
       .map((to, i) => ({ to, i }))
-      .filter(({ i }) => shownExtenders[i])
+      .filter(({ i }) => shownExtenders[i] && !extenderWired(i))
       .map(({ to, i }) => ({ medium: 'air' as const, from: feedPosition(i), to })),
-    extender__devices: visibleDevices
+    modem__extender: extenders
+      .map((to, i) => ({ to, i }))
+      .filter(({ i }) => shownExtenders[i] && extenderWired(i))
+      .map(({ to, i }) => ({ medium: 'cable' as const, cable: 'indoor' as const, points: cableFromModem(to, extenderRooms[i].floor) })),
+    extender__devices: wifiDevices
       .filter((id) => servingExtender(id) !== undefined)
       .map((id) => ({ medium: 'air' as const, from: extenders[servingExtender(id)!], to: devices[id], deviceId: id })),
   };
@@ -359,7 +394,7 @@ export const resolvePaths = (linkPaths: Record<string, PathSpec[]>, activeLinkId
         linkId,
         medium: spec.medium,
         cable: spec.medium === 'cable' ? spec.cable : undefined,
-        deviceId: spec.medium === 'air' ? spec.deviceId : undefined,
+        deviceId: spec.deviceId,
         curve,
         length: curve.getLength(),
       };

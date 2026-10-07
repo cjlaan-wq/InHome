@@ -4,6 +4,7 @@ import { t } from '../i18n';
 import { useAppStore } from '../state/store';
 import { qualityWord, useHome } from '../state/useHome';
 import { SignalBars } from './SignalBars';
+import { WifiBands } from './WifiBands';
 import { useFocusOnMount } from './useFocusOnMount';
 
 /** Uitleg over één onderdeel, met vorige/volgende om de keten door te lopen. */
@@ -65,6 +66,8 @@ export function NodeDetail({ nodeId }: { nodeId: NodeId }) {
           </ul>
         </section>
       )}
+
+      {node.id === 'wifi' && <WifiBands />}
 
       <nav className="mt-2 grid grid-cols-2 gap-2" aria-label={t('nodes.heading')}>
         {previous ? (

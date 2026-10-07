@@ -2,7 +2,7 @@ import { Instance, Instances } from '@react-three/drei';
 import type { HousePreset, Room } from '../../content/types';
 import { floorHeight, floorPitch, floorTop, slab } from '../../state/homeGeometry';
 import { geometries, materials } from '../materials';
-import { Block } from '../primitives';
+import { Block, Cylinder } from '../primitives';
 
 const wall = 0.15;
 /** Binnenmuren zijn laag (poppenhuis), zodat je van bovenaf in alle kamers kijkt. */
@@ -61,6 +61,7 @@ const overlap = (a1: number, a2: number, b1: number, b2: number): [number, numbe
 };
 
 function RoomShell({ room, house, neighbours }: { room: Room; house: HousePreset; neighbours: Room[] }) {
+  if (room.kind === 'garden') return <Garden room={room} house={house} />;
   const y = floorTop(room.floor);
   const { x, z, width: w, depth: d } = room;
   const right = x + w;
@@ -117,6 +118,29 @@ function RoomShell({ room, house, neighbours }: { room: Room; house: HousePreset
       )}
 
       <Furniture room={room} />
+    </group>
+  );
+}
+
+/** Tuin of balkon: gras, een laag hekje aan de buitenkant en wat groen. */
+function Garden({ room, house }: { room: Room; house: HousePreset }) {
+  const y = floorTop(room.floor);
+  const { x, z, width: w, depth: d } = room;
+  const fence = 0.06;
+  return (
+    <group>
+      <Block position={[x + w / 2, y - slab / 2, z + d / 2]} size={[w, slab, d]} material={materials.grass} />
+      <Block position={[x + w / 2, y + 0.2, z + d - fence / 2]} size={[w, 0.4, fence]} material={materials.buildingShade} />
+      {Math.abs(x + w - house.width) < 0.01 && (
+        <Block position={[x + w - fence / 2, y + 0.2, z + d / 2]} size={[fence, 0.4, d]} material={materials.buildingShade} />
+      )}
+      {x < 0.01 && <Block position={[fence / 2, y + 0.2, z + d / 2]} size={[fence, 0.4, d]} material={materials.buildingShade} />}
+      {d > 2 && (
+        <>
+          <Cylinder position={[x + w - 0.7, y + 0.35, z + d - 0.7]} size={[0.8, 0.7, 0.8]} material={materials.plant} />
+          <Cylinder position={[x + w - 1.6, y + 0.25, z + d - 0.6]} size={[0.6, 0.5, 0.6]} material={materials.plant} />
+        </>
+      )}
     </group>
   );
 }

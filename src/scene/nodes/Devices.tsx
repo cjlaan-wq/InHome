@@ -1,7 +1,7 @@
 import type { DeviceId } from '../../content/types';
 import type { Vec3 } from '../layout';
 import { materials } from '../materials';
-import { Block } from '../primitives';
+import { Block, Cylinder } from '../primitives';
 import { Highlight, type Status } from '../Highlight';
 
 function Laptop({ position }: { position: Vec3 }) {
@@ -39,10 +39,22 @@ function Tv({ position }: { position: Vec3 }) {
   );
 }
 
+/** Tuincamera / slimme deurbel: kastje met lens, bovenop een paal (de paal staat in Stands). */
+function Camera({ position }: { position: Vec3 }) {
+  return (
+    <group position={position}>
+      <Block size={[0.18, 0.16, 0.2]} material={materials.building} />
+      <Cylinder position={[0, 0, 0.11]} rotation-x={Math.PI / 2} size={[0.1, 0.04, 0.1]} material={materials.device} />
+      <Block position={[0.06, 0.05, 0.101]} size={[0.02, 0.02, 0.005]} material={materials.led} />
+    </group>
+  );
+}
+
 const components: Record<DeviceId, (props: { position: Vec3 }) => React.JSX.Element> = {
   laptop: Laptop,
   phone: Phone,
   tv: Tv,
+  camera: Camera,
 };
 
 /** Apparaten: elk apparaat is een eigen subonderdeel, zodat het los uitgelicht kan worden. */

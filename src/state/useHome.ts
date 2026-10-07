@@ -3,7 +3,7 @@ import { getHouse, nodes } from '../content';
 import type { DeviceId } from '../content/types';
 import { t } from '../i18n';
 import { computeCoverage, type Quality, type Reading } from './coverage';
-import { roomById } from './homeGeometry';
+import { deviceOrder, roomById } from './homeGeometry';
 import { useAppStore } from './store';
 
 const deviceLabels = Object.fromEntries(
@@ -49,6 +49,13 @@ export function useHome() {
       weakObstacles: describeObstacles(weak),
       modemRoomIn: roomIn(placement.modemRoomId),
       adviceModemRoom: lower(roomLabel(coverage.betterModemRoomId ?? placement.modemRoomId)),
+      // Per apparaat: {laptopRoomIn}, {laptopQuality}, {tvRoomIn}, {tvQuality}, …
+      ...Object.fromEntries(
+        deviceOrder.flatMap((id) => [
+          [`${id}RoomIn`, roomIn(placement.deviceRooms[id])],
+          [`${id}Quality`, qualityWord(coverage.devices[id].quality)],
+        ]),
+      ),
       adviceExtenderRoomIn: roomIn(
         coverage.bestExtenderRoomId ?? placement.extenderRoomIds[0] ?? house.defaults.extenderRoomId,
       ),

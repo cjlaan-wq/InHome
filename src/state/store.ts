@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { getHouse, getIssue, issueStepCount, issueStepFocus } from '../content';
-import type { ConnectionType, DeviceId, HouseId, NodeId } from '../content/types';
+import type { ConnectionType, DeviceId, HouseId, NodeId, WallType } from '../content/types';
 import { maxExtenders, type HomePlacement } from './homeGeometry';
 import { defaultHome, defaultPlacement, loadHome } from './persistHome';
 
@@ -16,6 +16,8 @@ const extenderIndex = (item: PlaceableId) => (item.startsWith('extender-') ? Num
 const initialHome = loadHome();
 
 export type Hovered = { nodeId: NodeId; partId?: DeviceId };
+
+export type WifiBand = '2.4' | '5';
 
 type AppState = {
   mode: Mode;
@@ -49,6 +51,12 @@ type AppState = {
   /** Extra SuperWifi-punt neerzetten (standaard in de voorgestelde kamer). */
   addExtender: (roomId?: string) => void;
   removeExtender: (index: number) => void;
+  setDeviceWired: (device: DeviceId, wired: boolean) => void;
+  setExtenderWired: (index: number, wired: boolean) => void;
+  setWallType: (wallType: WallType) => void;
+  /** 2,4 GHz of 5 GHz uitgelicht in de scène (null = gewoon). */
+  wifiBand: WifiBand | null;
+  setWifiBand: (band: WifiBand | null) => void;
   resetHome: () => void;
   setDragging: (item: PlaceableId | null) => void;
   setVisibleFloor: (floor: number | null) => void;
@@ -81,8 +89,9 @@ export const useAppStore = create<AppState>((set) => ({
           ? s.placement.extenderRoomIds
           : [getHouse(s.houseId).defaults.extenderRoomId]
         : [];
+      const wiredExtenders = extenderRoomIds.map((_, i) => s.placement.wiredExtenders[i] ?? false);
       return {
-        placement: { ...s.placement, extenderRoomIds },
+        placement: { ...s.placement, extenderRoomIds, wiredExtenders },
         hasExtender,
         // Zonder SuperWifi-punt valt de focus erop weg.
         focusNodeId: !hasExtender && s.focusNodeId === 'extender' ? null : s.focusNodeId,
@@ -108,8 +117,12 @@ export const useAppStore = create<AppState>((set) => ({
   // Ander woningtype: andere kamers. Had je SuperWifi, dan krijg je er één op de standaardplek.
   setHouse: (houseId) =>
     set((s) => {
-      const placement = defaultPlacement(houseId);
-      if (s.hasExtender) placement.extenderRoomIds = [getHouse(houseId).defaults.extenderRoomId];
+      // Muurtype en kabels horen bij jou, niet bij het woningtype: die blijven.
+      const placement = { ...defaultPlacement(houseId), wallType: s.placement.wallType, wiredDevices: s.placement.wiredDevices };
+      if (s.hasExtender) {
+        placement.extenderRoomIds = [getHouse(houseId).defaults.extenderRoomId];
+        placement.wiredExtenders = [false];
+      }
       return { houseId, placement, visibleFloor: null };
     }),
   place: (item, roomId) =>
@@ -132,18 +145,35 @@ export const useAppStore = create<AppState>((set) => ({
       const ids = s.placement.extenderRoomIds;
       if (ids.length >= maxExtenders) return {};
       const room = roomId ?? getHouse(s.houseId).defaults.extenderRoomId;
-      return { placement: { ...s.placement, extenderRoomIds: [...ids, room] }, hasExtender: true };
+      return {
+        placement: { ...s.placement, extenderRoomIds: [...ids, room], wiredExtenders: [...s.placement.wiredExtenders, false] },
+        hasExtender: true,
+      };
     }),
   removeExtender: (index) =>
     set((s) => {
       const extenderRoomIds = s.placement.extenderRoomIds.filter((_, i) => i !== index);
+      const wiredExtenders = s.placement.wiredExtenders.filter((_, i) => i !== index);
       return {
-        placement: { ...s.placement, extenderRoomIds },
+        placement: { ...s.placement, extenderRoomIds, wiredExtenders },
         hasExtender: extenderRoomIds.length > 0,
         dragging: null,
         focusNodeId: extenderRoomIds.length === 0 && s.focusNodeId === 'extender' ? null : s.focusNodeId,
       };
     }),
+  setDeviceWired: (device, wired) =>
+    set((s) => {
+      const others = s.placement.wiredDevices.filter((id) => id !== device);
+      return { placement: { ...s.placement, wiredDevices: wired ? [...others, device] : others } };
+    }),
+  setExtenderWired: (index, wired) =>
+    set((s) => {
+      const wiredExtenders = s.placement.extenderRoomIds.map((_, i) => (i === index ? wired : (s.placement.wiredExtenders[i] ?? false)));
+      return { placement: { ...s.placement, wiredExtenders } };
+    }),
+  setWallType: (wallType) => set((s) => ({ placement: { ...s.placement, wallType } })),
+  wifiBand: null,
+  setWifiBand: (wifiBand) => set({ wifiBand }),
   resetHome: () => set({ ...defaultHome(), hasExtender: false, visibleFloor: null }),
   setDragging: (dragging) => set({ dragging }),
   setVisibleFloor: (visibleFloor) => set({ visibleFloor }),

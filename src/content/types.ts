@@ -14,15 +14,20 @@ export type NodeId =
   | 'devices';
 
 /** Losse apparaten binnen het onderdeel 'devices'. */
-export type DeviceId = 'laptop' | 'phone' | 'tv';
+export type DeviceId = 'laptop' | 'phone' | 'tv' | 'camera';
 
 export type DevicePart = {
   id: DeviceId;
   label: string;
+  /** Kan met een netwerkkabel op de KPN Box (bijv. laptop, tv/decoder). */
+  wireable?: boolean;
 };
 
+/** Waar de muren van zijn: bepaalt hoeveel wifi ze tegenhouden. */
+export type WallType = 'light' | 'brick' | 'concrete';
+
 /** Soort kamer: bepaalt het meubilair in de scène. */
-export type RoomKind = 'hall' | 'landing' | 'living' | 'kitchen' | 'bedroom' | 'office' | 'attic';
+export type RoomKind = 'hall' | 'landing' | 'living' | 'kitchen' | 'bedroom' | 'office' | 'attic' | 'garden';
 
 /**
  * Kamer als rechthoek op een verdieping, in scène-eenheden (≈ meters).
@@ -100,10 +105,15 @@ export type Fix = {
   steps: string[];
   cta?: { label: string; href: string };
   /** Laat de oplossing live zien in de scène (bijv. een SuperWifi-punt neerzetten). */
-  demo?: 'extender';
+  /** Laat de oplossing live zien: een SuperWifi-punt neerzetten of een apparaat met een kabel aansluiten. */
+  demo?: 'extender' | { wire: DeviceId };
 };
 
-export type VisualEffect = 'blocked' | 'slow' | 'weak-signal' | 'device-only';
+/**
+ * blocked: pakketjes stoppen bij de breuk · slow: traag en oranje · weak-signal: vervagen onderweg ·
+ * device-only: stranden bij één apparaat · unstable: haperen en vallen af en toe weg.
+ */
+export type VisualEffect = 'blocked' | 'slow' | 'weak-signal' | 'device-only' | 'unstable';
 
 export type Issue = {
   id: string;
@@ -113,8 +123,16 @@ export type Issue = {
   affectedNodes: NodeId[];
   /** Alleen deze apparaten zijn betrokken (bij 'devices' in affectedNodes). Leeg/ontbreekt = alle. */
   affectedParts?: DeviceId[];
-  /** Bepaal het betrokken apparaat uit het eigen huis: het apparaat met de zwakste wifi. */
-  affectedPartsFrom?: 'weakest-wifi';
+  /**
+   * Bepaal de betrokken apparaten uit het eigen huis:
+   * 'weakest-wifi' = het apparaat met de zwakste wifi; 'wifi-only' = alleen de affectedParts die op wifi zitten
+   * (met een kabel heb je dit probleem niet).
+   */
+  affectedPartsFrom?: 'weakest-wifi' | 'wifi-only';
+  /** Extra in de scène: wifi-netwerken van de buren (storing door drukte in de lucht). */
+  sceneExtra?: 'interference';
+  /** Extra hulpmiddel in het paneel bij de oplossingen. */
+  tool?: 'bandwidth';
   affectedLinks: string[];
   visualEffect: VisualEffect;
   steps: IssueStep[];

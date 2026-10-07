@@ -22,6 +22,8 @@ export const materials = {
   cabinet: standard(colors.cabinet, { roughness: 0.6 }),
   furniture: standard(colors.furniture),
   fabric: standard(colors.fabric),
+  grass: standard(colors.grass),
+  plant: standard(colors.plant),
   device: standard(colors.device, { roughness: 0.4 }),
   screen: standard(colors.screen, { roughness: 0.25, emissive: colors.screen, emissiveIntensity: 0.25 }),
   groundPath: standard(colors.groundPath),

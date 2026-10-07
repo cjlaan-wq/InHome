@@ -28,6 +28,8 @@ export function Stands({ modem, extenders, devices, shownDevices, modemShown }: 
           const base = deviceBaseHeight[id];
           const floor = p[1] - base - deviceLift[id];
           if (id === 'tv') return <Block key={id} position={[p[0], floor + base / 2, p[2]]} size={[1.3, base, 0.4]} material={materials.furniture} />;
+          if (id === 'camera')
+            return <Cylinder key={id} position={[p[0], floor + base / 2, p[2]]} size={[0.07, base, 0.07]} material={materials.buildingShade} />;
           const top = id === 'laptop' ? [0.75, 0.5] : [0.45, 0.45];
           return (
             <group key={id}>

@@ -1,4 +1,4 @@
-import type { DeviceId, HousePreset, Room } from '../content/types';
+import type { DeviceId, HousePreset, Room, WallType } from '../content/types';
 
 // Pure geometrie van het eigen huis (geen three.js): waar staat wat, in scène-eenheden.
 // Gebruikt door de 3D-scène, het dekkingsmodel en het paneel.
@@ -12,13 +12,14 @@ export const floorPitch = floorHeight + slab;
 /** Bovenkant van de vloer van een verdieping. */
 export const floorTop = (floor: number) => 0.05 + floor * floorPitch;
 
-export const deviceOrder: DeviceId[] = ['laptop', 'tv', 'phone'];
+export const deviceOrder: DeviceId[] = ['laptop', 'tv', 'phone', 'camera'];
 
 /** Welke plek in de kamer een item krijgt (fracties van breedte/diepte), vóór in de kamer. */
 const deviceSlots: [number, number][] = [
   [0.3, 0.64],
   [0.68, 0.8],
   [0.36, 0.88],
+  [0.55, 0.45],
 ];
 
 /** Meer SuperWifi-punten dan dit is in een gewoon huis zelden nodig. */
@@ -28,7 +29,12 @@ export type HomePlacement = {
   modemRoomId: string;
   /** Kamers van de SuperWifi-punten (0 tot maxExtenders). */
   extenderRoomIds: string[];
+  /** Per SuperWifi-punt: met een netwerkkabel aan de KPN Box (zelfde volgorde als extenderRoomIds). */
+  wiredExtenders: boolean[];
   deviceRooms: Record<DeviceId, string>;
+  /** Apparaten die met een netwerkkabel op de KPN Box zitten. */
+  wiredDevices: DeviceId[];
+  wallType: WallType;
 };
 
 export const roomById = (house: HousePreset, id: string): Room =>
@@ -86,9 +92,9 @@ export const isCovered = (house: HousePreset, floor: number, x: number, z: numbe
   );
 
 /** Hoogte van het meubel waar een apparaat op staat/hangt, boven de vloer. */
-export const deviceBaseHeight: Record<DeviceId, number> = { laptop: 0.75, tv: 0.5, phone: 0.5 };
+export const deviceBaseHeight: Record<DeviceId, number> = { laptop: 0.75, tv: 0.5, phone: 0.5, camera: 1.4 };
 /** Hoeveel hoger dan het meubel het midden van het apparaat zit. */
-export const deviceLift: Record<DeviceId, number> = { laptop: 0.03, tv: 0.45, phone: 0.02 };
+export const deviceLift: Record<DeviceId, number> = { laptop: 0.03, tv: 0.45, phone: 0.02, camera: 0.08 };
 
 /** Plekken van alle apparaten: per kamer krijgen apparaten om de beurt een vrije plek. */
 export const deviceSpots = (house: HousePreset, placement: HomePlacement): Record<DeviceId, Point3> => {
@@ -108,8 +114,11 @@ export const deviceSpots = (house: HousePreset, placement: HomePlacement): Recor
   return spots;
 };
 
-/** Ruwe afmeting van het huis, voor de camera. */
+/** Ruwe afmeting van het huis (zonder tuin), voor de camera. */
 export const houseSize = (house: HousePreset) => {
   const floors = Math.max(...house.rooms.map((room) => room.floor)) + 1;
   return { width: house.width, depth: house.depth, height: floors * floorPitch, floors };
 };
+
+/** Tuin of balkon: buiten, vóór de gevel. */
+export const isOutside = (room: Room) => room.kind === 'garden';

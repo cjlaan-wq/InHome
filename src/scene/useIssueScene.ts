@@ -27,6 +27,11 @@ export function useIssueScene(coverage: Coverage) {
           return path.deviceId && status.affectedParts?.includes(path.deviceId) ? { kind: 'fade' } : flow;
         case 'device-only':
           return affected ? { kind: 'stop', stopAt: 0.85 } : flow;
+        case 'unstable':
+          // Haperen: de betrokken apparaten op wifi (of alle wifi, bij drukte in de lucht).
+          if (path.medium !== 'air') return flow;
+          if (issue.sceneExtra === 'interference') return { kind: 'jitter' };
+          return path.deviceId && status.affectedParts?.includes(path.deviceId) ? { kind: 'jitter' } : flow;
       }
     };
 

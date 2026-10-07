@@ -13,6 +13,9 @@ export const links: NetworkLink[] = [
   },
   { id: linkId('house-connection', 'modem'), from: 'house-connection', to: 'modem', connectionTypes: ['fiber', 'dsl'] },
   { id: linkId('wifi', 'devices'), from: 'wifi', to: 'devices', connectionTypes: ['fiber', 'dsl'] },
+  // Netwerkkabel van de KPN Box naar een apparaat of SuperWifi-punt (als de klant dat zo heeft).
+  { id: linkId('modem', 'devices'), from: 'modem', to: 'devices', connectionTypes: ['fiber', 'dsl'] },
+  { id: linkId('modem', 'extender'), from: 'modem', to: 'extender', connectionTypes: ['fiber', 'dsl'] },
   { id: linkId('wifi', 'extender'), from: 'wifi', to: 'extender', connectionTypes: ['fiber', 'dsl'] },
   { id: linkId('extender', 'devices'), from: 'extender', to: 'devices', connectionTypes: ['fiber', 'dsl'] },
 ];

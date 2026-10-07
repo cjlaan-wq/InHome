@@ -9,6 +9,7 @@ import { useHome } from '../state/useHome';
 import { timings } from '../theme';
 import { ExternalIcon, WarningIcon } from './Icons';
 import { useFocusOnMount } from './useFocusOnMount';
+import { BandwidthTool } from './BandwidthTool';
 
 /** Probleemmodus: uitleg in stappen, daarna de oplossingen en een 'Lukt het niet?'-route. */
 export function IssueView({ issue }: { issue: Issue }) {
@@ -179,6 +180,7 @@ function Fixes({ issue, fill }: { issue: Issue; fill: (text: string) => string }
   return (
     <div className="mt-2 flex flex-col gap-4">
       <p className="text-sm text-ink-muted">{t('issue.fixesIntro')}</p>
+      {issue.tool === 'bandwidth' && <BandwidthTool />}
       <ol className="flex flex-col gap-3">
         {issue.fixes.map((fix, i) => (
           <FixCard key={fix.title} fix={fix} index={i} fill={fill} />
@@ -199,7 +201,10 @@ function FixCard({ fix, index, fill }: { fix: Fix; index: number; fill: (text: s
   const hasExtender = useAppStore((s) => s.hasExtender);
   const setHasExtender = useAppStore((s) => s.setHasExtender);
   const addExtender = useAppStore((s) => s.addExtender);
-  const { coverage, house } = useHome();
+  const setDeviceWired = useAppStore((s) => s.setDeviceWired);
+  const { coverage, house, placement, deviceLabel } = useHome();
+  const wireDevice = typeof fix.demo === 'object' ? fix.demo.wire : undefined;
+  const isWired = wireDevice ? placement.wiredDevices.includes(wireDevice) : false;
 
   return (
     <li className="rounded-xl border border-line p-4">
@@ -230,6 +235,18 @@ function FixCard({ fix, index, fill }: { fix: Fix; index: number; fill: (text: s
           className="mt-3 rounded-lg border border-kpn-green-dark px-3 py-2 text-sm font-medium text-kpn-green-dark hover:bg-scene focus-visible:outline-2 focus-visible:outline-kpn-green-dark"
         >
           {hasExtender ? t('issue.demoHide') : t('issue.demoShow')}
+        </button>
+      )}
+      {wireDevice && (
+        <button
+          type="button"
+          // Sluit het apparaat (in de tekening) aan met een netwerkkabel, of haal de kabel weer weg.
+          onClick={() => setDeviceWired(wireDevice, !isWired)}
+          aria-pressed={isWired}
+          aria-label={`${isWired ? t('issue.demoWireHide') : t('issue.demoWireShow')}: ${deviceLabel(wireDevice)}`}
+          className="mt-3 rounded-lg border border-kpn-green-dark px-3 py-2 text-sm font-medium text-kpn-green-dark hover:bg-scene focus-visible:outline-2 focus-visible:outline-kpn-green-dark"
+        >
+          {isWired ? t('issue.demoWireHide') : t('issue.demoWireShow')}
         </button>
       )}
       {fix.cta && <ExternalLink href={fix.cta.href} label={fix.cta.label} />}

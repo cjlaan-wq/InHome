@@ -32,4 +32,7 @@ krijgt een eigen preview-URL.
 Woningtypes staan in `src/content/houses.ts` (kamers als rechthoeken per verdieping).
 Het indicatieve wifi-dekkingsmodel staat in `src/state/coverage.ts` – **concept**, de
 getallen staan bovenaan bij elkaar. Een huis is te delen via de link, bijvoorbeeld
-`?huis=detached&box=hal&laptop=werkkamer&tv=woonkamer&telefoon=zolder&superwifi=overloop`.
+`?huis=detached&box=hal&laptop=werkkamer&tv=woonkamer&telefoon=zolder&camera=tuin&superwifi=overloop,zolder&superwifikabel=1,0&kabel=tv&muren=beton`.
+
+Andere content: `src/content/wifiBands.ts` (uitleg 2,4/5 GHz) en `src/content/bandwidth.ts`
+(rekenhulp 'Past het tegelijk?'), beide **concept**.

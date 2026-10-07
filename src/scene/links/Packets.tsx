@@ -16,6 +16,8 @@ export type PacketBehaviour =
   | { kind: 'flow'; speedFactor?: number; problem?: boolean }
   | { kind: 'stop'; stopAt: number }
   | { kind: 'fade' }
+  /** Haperen: schokkerig tempo en af en toe valt er een pakketje weg. */
+  | { kind: 'jitter' }
   | { kind: 'none' };
 
 const packetGeometry = new THREE.SphereGeometry(1, 12, 8);
@@ -76,6 +78,11 @@ export function Packets({ paths, behaviours, connectionType, animate }: Props) {
       } else if (b.kind === 'fade') {
         scale = Math.min(1, raw * 8) * (1 - raw) ** 1.5;
         if (slot.index % 2 === 1 && raw > 0.4) scale = 0; // de helft valt onderweg weg
+      } else if (b.kind === 'jitter') {
+        // Stotterend: het tempo schokt, en per ronde valt (pseudo-willekeurig) een pakketje weg.
+        t = Math.min(0.999, raw + 0.04 * Math.sin(time * 9 + slot.index * 2.3));
+        const lap = Math.floor(slot.offset + time * slot.speed);
+        if ((lap * 7 + slot.index * 3) % 4 === 0) scale = 0;
       }
       slot.path.curve.getPointAt(t, temp.p);
       temp.s.setScalar(slot.size * Math.max(0, scale));
@@ -91,7 +98,7 @@ export function Packets({ paths, behaviours, connectionType, animate }: Props) {
     if (!instanced) return;
     slots.forEach((slot, i) => {
       const b = slot.behaviour;
-      const isProblem = b.kind === 'stop' || b.kind === 'fade' || (b.kind === 'flow' && b.problem);
+      const isProblem = b.kind === 'stop' || b.kind === 'fade' || b.kind === 'jitter' || (b.kind === 'flow' && b.problem);
       instanced.setColorAt(i, isProblem ? problem : healthy);
     });
     if (instanced.instanceColor) instanced.instanceColor.needsUpdate = true;

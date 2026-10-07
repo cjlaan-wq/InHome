@@ -9,7 +9,11 @@ const links = {
   outages: 'https://www.kpn.com/service/storingen',
   contact: 'https://www.kpn.com/service/contact',
   superWifi: 'https://www.kpn.com/internet/superwifi',
+  internet: 'https://www.kpn.com/internet',
 };
+
+// In teksten met {…} worden waarden uit 'Jouw huis' ingevuld, zoals {tvRoomIn} ('in de woonkamer')
+// en {tvQuality} ('redelijk'); zo ook voor laptop, phone en camera.
 
 export const issues: Issue[] = [
   // CONCEPT – valideren met KPN Service
@@ -233,6 +237,222 @@ export const issues: Issue[] = [
       },
     ],
     escalation: { label: 'Lukt het niet? Neem contact op met KPN', href: links.contact },
+    draft: true,
+  },
+
+  // CONCEPT – valideren met KPN Service
+  {
+    id: 'tv-stutter',
+    title: 'Het tv-beeld hapert',
+    symptom: 'Het beeld van KPN TV hapert, wordt blokkerig of blijft even hangen.',
+    connectionTypes: ['fiber', 'dsl'],
+    affectedNodes: ['wifi', 'devices'],
+    affectedParts: ['tv'],
+    // Zit je decoder met een kabel aan de KPN Box? Dan ligt het niet aan je wifi.
+    affectedPartsFrom: 'wifi-only',
+    affectedLinks: [linkId('wifi', 'devices'), linkId('extender', 'devices')],
+    visualEffect: 'unstable',
+    steps: [
+      {
+        focusNodeId: 'devices',
+        title: 'Je decoder zit op wifi',
+        body: 'Je tv krijgt het beeld via de decoder. Die staat {tvRoomIn} en is via wifi verbonden. De wifi is daar {tvQuality}.',
+      },
+      {
+        focusNodeId: 'wifi',
+        title: 'Tv kijken vraagt een stabiele verbinding',
+        body: 'Een zender of film is een constante stroom gegevens. Valt de wifi even weg, dan hapert het beeld. Wifi is daar gevoeliger voor dan een kabel.',
+      },
+      {
+        focusNodeId: 'modem',
+        title: 'Een kabel is de stabielste weg',
+        body: 'Met een netwerkkabel tussen je KPN Box en je decoder heeft wifi geen invloed meer op je tv-beeld.',
+      },
+    ],
+    fixesFocusNodeId: 'devices',
+    fixes: [
+      {
+        title: 'Sluit je decoder aan met een netwerkkabel',
+        steps: [
+          'Gebruik een netwerkkabel tussen de decoder en je KPN Box.',
+          'Staat je KPN Box ver weg? Een SuperWifi-punt bij de tv heeft ook een aansluiting voor een kabel.',
+        ],
+        demo: { wire: 'tv' },
+      },
+      {
+        title: 'Herstart je decoder',
+        steps: ['Haal de stekker van de decoder uit het stopcontact.', 'Wacht 10 seconden en stop hem er weer in.', 'Wacht tot het beeld terug is.'],
+      },
+      {
+        title: 'Zorg voor betere wifi bij je tv',
+        steps: ['Zet je KPN Box dichter bij de tv, of zet een SuperWifi-punt in de buurt van de tv.'],
+        demo: 'extender',
+      },
+      {
+        title: 'Kijk of er een storing is',
+        steps: ['Hapert het beeld op alle zenders, ook met een kabel? Kijk dan op de storingenpagina.'],
+        cta: { label: 'Naar de storingenpagina', href: links.outages },
+      },
+    ],
+    escalation: { label: 'Neem contact op met KPN', href: links.contact },
+    draft: true,
+  },
+
+  // CONCEPT – valideren met KPN Service
+  {
+    id: 'busy-home',
+    title: 'Alles wordt traag als iedereen online is',
+    symptom: 'Meestal gaat het prima, maar als het hele huis streamt, gamet en belt, wordt alles traag.',
+    connectionTypes: ['fiber', 'dsl'],
+    affectedNodes: ['house-connection', 'modem'],
+    affectedLinks: [linkId('street-cabinet', 'house-connection')],
+    visualEffect: 'slow',
+    steps: [
+      {
+        focusNodeId: 'house-connection',
+        title: 'Je verbinding is als een snelweg',
+        body: 'Je abonnement bepaalt hoeveel er tegelijk door je verbinding past. Iedereen in huis deelt die ruimte.',
+      },
+      {
+        focusNodeId: 'devices',
+        title: 'Iedereen deelt dezelfde ruimte',
+        body: 'Streamen in 4K, games downloaden en videobellen vragen veel tegelijk. Past het niet meer, dan wordt alles een beetje trager.',
+      },
+      {
+        focusNodeId: 'modem',
+        title: 'Ook wifi heeft grenzen',
+        body: 'Via wifi haal je minder snelheid dan via een kabel. Hoe meer apparaten op wifi, hoe drukker het wordt.',
+      },
+    ],
+    fixesFocusNodeId: 'modem',
+    tool: 'bandwidth',
+    fixes: [
+      {
+        title: 'Spreid de zware dingen',
+        steps: [
+          "Laat grote downloads en updates 's nachts draaien.",
+          'Pauzeer back-ups naar de cloud als iemand gaat videobellen of gamen.',
+        ],
+      },
+      {
+        title: 'Gebruik een kabel voor vaste apparaten',
+        steps: ['Sluit je tv/decoder of spelcomputer aan met een netwerkkabel. Dan blijft de wifi vrijer voor de rest.'],
+        demo: { wire: 'tv' },
+      },
+      {
+        title: 'Kijk of je abonnement past',
+        steps: ['Bekijk welke snelheid je hebt en of die past bij hoe jullie internet gebruiken.'],
+        cta: { label: 'Bekijk internetabonnementen', href: links.internet },
+      },
+    ],
+    escalation: { label: 'Neem contact op met KPN', href: links.contact },
+    draft: true,
+  },
+
+  // CONCEPT – valideren met KPN Service
+  {
+    id: 'video-calls',
+    title: 'Videobellen hapert',
+    symptom: 'Bij videobellen of thuiswerken valt het beeld weg, of klink je robotachtig.',
+    connectionTypes: ['fiber', 'dsl'],
+    affectedNodes: ['wifi', 'devices'],
+    affectedParts: ['laptop'],
+    affectedPartsFrom: 'wifi-only',
+    affectedLinks: [linkId('wifi', 'devices'), linkId('extender', 'devices')],
+    visualEffect: 'unstable',
+    steps: [
+      {
+        focusNodeId: 'devices',
+        title: 'Bellen vraagt een stabiele verbinding',
+        body: 'Bij videobellen gaan beeld en geluid twee kanten op, zonder vertraging. Je laptop staat {laptopRoomIn}, waar de wifi {laptopQuality} is.',
+      },
+      {
+        focusNodeId: 'wifi',
+        title: 'Haperen is iets anders dan traag',
+        body: 'Je internet kan snel genoeg zijn en toch haperen. Kleine onderbrekingen in de wifi merk je bij bellen meteen.',
+      },
+      {
+        focusNodeId: 'modem',
+        title: 'Andere dingen in huis tellen mee',
+        body: 'Downloadt of streamt iemand anders tegelijk iets groots? Dan krijgt je gesprek minder ruimte.',
+      },
+    ],
+    fixesFocusNodeId: 'devices',
+    fixes: [
+      {
+        title: 'Gebruik een netwerkkabel',
+        steps: [
+          'Sluit je laptop met een netwerkkabel aan op je KPN Box. Dat is het stabielst.',
+          'Heeft je laptop geen aansluiting? Gebruik een USB-netwerkadapter.',
+        ],
+        demo: { wire: 'laptop' },
+      },
+      {
+        title: 'Zorg voor goede wifi waar je belt',
+        steps: ['Bel in een kamer met goede wifi, of zet een SuperWifi-punt in je werkkamer.'],
+        demo: 'extender',
+      },
+      {
+        title: 'Maak ruimte voor je gesprek',
+        steps: [
+          'Sluit andere programma’s en tabbladen.',
+          'Pauzeer grote downloads en back-ups naar de cloud tijdens het bellen.',
+          'Blijft het haperen? Zet je camera even uit.',
+        ],
+      },
+      {
+        title: 'Kies de 5 GHz-wifi',
+        steps: ['Kun je kiezen tussen twee wifi-netwerken van je KPN Box? Kies dan 5 GHz. Dat is sneller en rustiger.'],
+      },
+    ],
+    escalation: { label: 'Neem contact op met KPN', href: links.contact },
+    draft: true,
+  },
+
+  // CONCEPT – valideren met KPN Service
+  {
+    id: 'neighbours-wifi',
+    title: "Mijn wifi is wisselend, vooral 's avonds",
+    symptom: 'Je wifi is soms prima en soms ineens slecht, ook dicht bij je KPN Box. Je woont tussen veel buren.',
+    connectionTypes: ['fiber', 'dsl'],
+    affectedNodes: ['wifi'],
+    affectedLinks: [linkId('wifi', 'devices'), linkId('wifi', 'extender'), linkId('extender', 'devices')],
+    visualEffect: 'unstable',
+    sceneExtra: 'interference',
+    steps: [
+      {
+        focusNodeId: 'wifi',
+        title: 'De lucht is druk',
+        body: 'Wifi gebruikt een paar radiokanalen. In een appartement of rijtjeshuis zenden de netwerken van je buren op dezelfde kanalen.',
+      },
+      {
+        focusNodeId: 'wifi',
+        title: 'Netwerken zitten elkaar in de weg',
+        body: "Is iedereen 's avonds online? Dan moeten de netwerken op elkaar wachten. Je wifi hapert dan, ook al is het signaal sterk.",
+      },
+      {
+        focusNodeId: 'modem',
+        title: 'Je KPN Box kan uitwijken',
+        body: 'Je KPN Box zoekt zelf een rustig kanaal. Een herstart helpt hem soms om een beter kanaal te vinden.',
+      },
+    ],
+    fixesFocusNodeId: 'wifi',
+    fixes: [
+      {
+        title: 'Kies de 5 GHz-wifi',
+        steps: ['5 GHz heeft meer kanalen en reikt minder ver. Daardoor heb je er minder last van de buren.'],
+      },
+      {
+        title: 'Herstart je KPN Box',
+        steps: ['Haal de stekker eruit, wacht 30 seconden en stop hem er weer in.', 'Je KPN Box kiest daarna opnieuw een kanaal.'],
+      },
+      {
+        title: 'Gebruik kabels waar het kan',
+        steps: ['Sluit vaste apparaten zoals je tv of computer aan met een netwerkkabel. Daar hebben de buren geen invloed op.'],
+        demo: { wire: 'tv' },
+      },
+    ],
+    escalation: { label: 'Neem contact op met KPN', href: links.contact },
     draft: true,
   },
 ];

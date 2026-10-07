@@ -1,7 +1,8 @@
-import type { DeviceId, HousePreset, Room } from '../content/types';
+import type { DeviceId, HousePreset, Room, WallType } from '../content/types';
 import {
   deviceOrder,
   extenderSpots,
+  isOutside,
   maxExtenders,
   modemSpot,
   roomAt,
@@ -18,7 +19,12 @@ import {
 export const coverageModel = {
   perMeter: 5,
   perWall: 10,
+  /** De voorgevel (naar tuin of balkon) houdt meer tegen dan een binnenmuur. */
+  perOuterWall: 18,
   perFloor: 30,
+  /** Muren en vloeren van beton houden veel meer tegen dan hout of gips. */
+  wallFactor: { light: 0.6, brick: 1, concrete: 1.6 } satisfies Record<WallType, number>,
+  floorFactor: { light: 0.75, brick: 1, concrete: 1.25 } satisfies Record<WallType, number>,
   /** Een SuperWifi-punt zendt nooit sterker uit dan dit, en ook niet sterker dan wat het zelf ontvangt + bonus. */
   extenderMax: 90,
   extenderBonus: 35,
@@ -28,7 +34,8 @@ export const coverageModel = {
 } as const;
 
 export type Quality = 'good' | 'fair' | 'weak';
-export type Source = 'modem' | 'extender';
+/** Waar het signaal vandaan komt; 'cable' = met een netwerkkabel aan de KPN Box. */
+export type Source = 'modem' | 'extender' | 'cable';
 
 export type Reading = {
   score: number;
@@ -44,7 +51,7 @@ export type Coverage = {
   rooms: Record<string, Reading>;
   devices: Record<DeviceId, Reading & { roomId: string }>;
   weakestDevice: DeviceId;
-  /** Van welke bron elk SuperWifi-punt zijn signaal krijgt: -1 = KPN Box, anders index van een ander punt. */
+  /** Van welke bron elk SuperWifi-punt zijn signaal krijgt: -1 = KPN Box (wifi), -2 = kabel, anders index van een ander punt. */
   extenderFeeds: number[];
   /** Kamer waar de KPN Box (veel) beter zou staan, als die er is. */
   betterModemRoomId?: string;
@@ -56,12 +63,14 @@ const quality = (score: number): Quality =>
   score >= coverageModel.good ? 'good' : score >= coverageModel.fair ? 'fair' : 'weak';
 
 /**
- * Aantal muren tussen twee punten: tel kamerwissels langs de lijn ertussen (plattegrond).
- * De overgang naar een andere verdieping telt als vloer, niet ook nog als muur.
+ * Muren tussen twee punten: tel kamerwissels langs de lijn ertussen (plattegrond).
+ * Een wissel van of naar tuin/balkon is de voorgevel. De overgang naar een andere
+ * verdieping telt als vloer, niet ook nog als muur.
  */
 const wallsBetween = (house: HousePreset, a: Point3, aFloor: number, b: Point3, bFloor: number) => {
-  let walls = 0;
-  let previous: string | undefined;
+  let inner = 0;
+  let outer = 0;
+  let previous: Room | undefined;
   let previousFloor = aFloor;
   const steps = 32;
   for (let i = 0; i <= steps; i++) {
@@ -71,23 +80,32 @@ const wallsBetween = (house: HousePreset, a: Point3, aFloor: number, b: Point3, 
     previousFloor = floor;
     const room = roomAt(house, floor, a[0] + (b[0] - a[0]) * t, a[2] + (b[2] - a[2]) * t);
     if (!room) continue;
-    if (previous && room.id !== previous) walls++;
-    previous = room.id;
+    if (previous && room.id !== previous.id) {
+      if (isOutside(room) !== isOutside(previous)) outer++;
+      else inner++;
+    }
+    previous = room;
   }
-  return walls;
+  return { inner, outer };
 };
 
-const signal = (house: HousePreset, from: Point3, fromFloor: number, room: Room, base: number) => {
+const signal = (house: HousePreset, wallType: WallType, from: Point3, fromFloor: number, room: Room, base: number) => {
   const to = roomCenter(room);
   const distance = Math.hypot(to[0] - from[0], to[1] - from[1], to[2] - from[2]);
-  const walls = wallsBetween(house, from, fromFloor, to, room.floor);
+  const { inner, outer } = wallsBetween(house, from, fromFloor, to, room.floor);
   const floors = Math.abs(room.floor - fromFloor);
+  const m = coverageModel;
   const score =
-    base - coverageModel.perMeter * distance - coverageModel.perWall * walls - coverageModel.perFloor * floors;
-  return { score: Math.max(0, Math.min(100, Math.round(score))), walls, floors };
+    base -
+    m.perMeter * distance -
+    m.wallFactor[wallType] * (m.perWall * inner + m.perOuterWall * outer) -
+    m.floorFactor[wallType] * m.perFloor * floors;
+  return { score: Math.max(0, Math.min(100, Math.round(score))), walls: inner + outer, floors };
 };
 
 type Emitter = { at: Point3; floor: number; base: number; source: Source; extenderIndex?: number };
+
+const cableReading: Reading = { score: 100, quality: 'good', servedBy: 'cable', walls: 0, floors: 0 };
 
 /**
  * Dekking per kamer en per apparaat. SuperWifi-punten werken als mesh: elk punt krijgt zijn
@@ -99,13 +117,23 @@ const measure = (house: HousePreset, placement: HomePlacement) => {
   const spots = extenderSpots(house, placement);
   const pending = placement.extenderRoomIds.map((roomId, index) => ({ room: roomById(house, roomId), index }));
   const extenderFeeds: number[] = placement.extenderRoomIds.map(() => -1);
+  const wall = placement.wallType;
+
+  // SuperWifi-punten met een kabel: vol signaal, ongeacht muren en vloeren.
+  for (let p = pending.length - 1; p >= 0; p--) {
+    const ext = pending[p];
+    if (!placement.wiredExtenders[ext.index]) continue;
+    pending.splice(p, 1);
+    extenderFeeds[ext.index] = -2;
+    emitters.push({ at: spots[ext.index], floor: ext.room.floor, base: coverageModel.extenderMax, source: 'extender', extenderIndex: ext.index });
+  }
 
   while (pending.length > 0) {
     // Welk nog niet aangesloten punt ontvangt het sterkst, en van wie?
     let best = { pendingIndex: 0, score: -1, feed: -1 };
     pending.forEach((ext, pendingIndex) => {
       emitters.forEach((emitter) => {
-        const { score } = signal(house, emitter.at, emitter.floor, ext.room, emitter.base);
+        const { score } = signal(house, wall, emitter.at, emitter.floor, ext.room, emitter.base);
         if (score > best.score) best = { pendingIndex, score, feed: emitter.extenderIndex ?? -1 };
       });
     });
@@ -124,15 +152,19 @@ const measure = (house: HousePreset, placement: HomePlacement) => {
   for (const room of house.rooms) {
     let reading: Reading | undefined;
     for (const emitter of emitters) {
-      const s = signal(house, emitter.at, emitter.floor, room, emitter.base);
+      const s = signal(house, wall, emitter.at, emitter.floor, room, emitter.base);
       if (!reading || s.score > reading.score)
         reading = { ...s, quality: quality(s.score), servedBy: emitter.source, extenderIndex: emitter.extenderIndex };
     }
     rooms[room.id] = reading!;
   }
 
+  // Apparaten met een netwerkkabel: altijd goed, de wifi in die kamer doet er niet toe.
   const devices = Object.fromEntries(
-    deviceOrder.map((id) => [id, { ...rooms[placement.deviceRooms[id]], roomId: placement.deviceRooms[id] }]),
+    deviceOrder.map((id) => {
+      const roomId = placement.deviceRooms[id];
+      return [id, { ...(placement.wiredDevices.includes(id) ? cableReading : rooms[roomId]), roomId }];
+    }),
   ) as Coverage['devices'];
   const weakestDevice = deviceOrder.reduce((a, b) => (devices[b].score < devices[a].score ? b : a));
   return { rooms, devices, weakestDevice, extenderFeeds };
@@ -149,7 +181,7 @@ export function computeCoverage(house: HousePreset, placement: HomePlacement): C
   const currentMin = current.devices[current.weakestDevice].score;
 
   // Advies 1: zou de KPN Box ergens anders (zonder SuperWifi) duidelijk beter staan?
-  const withoutExtenders = { ...placement, extenderRoomIds: [] };
+  const withoutExtenders = { ...placement, extenderRoomIds: [], wiredExtenders: [] };
   let betterModemRoomId: string | undefined;
   let bestModemRank = rank(measure(house, withoutExtenders).devices);
   for (const room of house.rooms) {
@@ -167,7 +199,11 @@ export function computeCoverage(house: HousePreset, placement: HomePlacement): C
     let bestExtRank = rank(current.devices);
     for (const room of house.rooms) {
       if (room.id === placement.modemRoomId || placement.extenderRoomIds.includes(room.id)) continue;
-      const option = measure(house, { ...placement, extenderRoomIds: [...placement.extenderRoomIds, room.id] });
+      const option = measure(house, {
+        ...placement,
+        extenderRoomIds: [...placement.extenderRoomIds, room.id],
+        wiredExtenders: [...placement.wiredExtenders, false],
+      });
       if (rank(option.devices) > bestExtRank) {
         bestExtRank = rank(option.devices);
         bestExtenderRoomId = room.id;

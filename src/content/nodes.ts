@@ -93,13 +93,14 @@ export const nodes: NetworkNode[] = [
     label: 'Apparaten',
     title: 'Je apparaten',
     description:
-      'Je laptop, telefoon en tv maken verbinding met je wifi. Elk apparaat heeft een eigen ontvanger. Daarom kan het gebeuren dat één apparaat het niet doet en de rest wel.',
-    summary: 'Je laptop, telefoon en tv.',
+      'Je laptop, telefoon, tv en tuincamera maken verbinding met je wifi, of met een netwerkkabel. Elk apparaat heeft een eigen ontvanger. Daarom kan het gebeuren dat één apparaat het niet doet en de rest wel.',
+    summary: 'Je laptop, telefoon, tv en tuincamera.',
     connectionTypes: ['fiber', 'dsl'],
     parts: [
-      { id: 'laptop', label: 'Laptop' },
-      { id: 'tv', label: 'Tv' },
+      { id: 'laptop', label: 'Laptop', wireable: true },
+      { id: 'tv', label: 'Tv', wireable: true },
       { id: 'phone', label: 'Telefoon' },
+      { id: 'camera', label: 'Tuincamera' },
     ],
   },
 ];

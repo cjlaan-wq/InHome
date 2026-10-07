@@ -19,6 +19,8 @@ export const affectedParts = (issue: Issue | undefined, coverage: Coverage): Dev
     const weakest = coverage.weakestDevice;
     return coverage.devices[weakest].quality === 'good' ? [] : [weakest];
   }
+  if (issue?.affectedPartsFrom === 'wifi-only')
+    return (issue.affectedParts ?? []).filter((id) => coverage.devices[id].servedBy !== 'cable');
   return issue?.affectedParts;
 };
 

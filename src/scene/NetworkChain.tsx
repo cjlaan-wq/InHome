@@ -9,7 +9,7 @@ import { CoverageOverlay } from './CoverageOverlay';
 import { Highlight, IssuePulse, variant } from './Highlight';
 import { Hotspots } from './Hotspots';
 import { Labels } from './Labels';
-import { cableColorKey, decorCables, resolvePaths, type SceneLayout, type Vec3 } from './layout';
+import { cableColorKey, decorCables, neighborHouses, resolvePaths, type SceneLayout, type Vec3 } from './layout';
 import { Cable } from './links/Cable';
 import { Packets } from './links/Packets';
 import { ProblemMarker } from './links/ProblemMarker';
@@ -29,15 +29,31 @@ import { WifiSignal } from './nodes/WifiSignal';
 import { RoomDrag } from './RoomDrag';
 import { useIssueScene } from './useIssueScene';
 
+/** 2,4 GHz reikt verder maar is trager; 5 GHz is sneller maar reikt minder ver. */
+const bands = {
+  normal: { radius: 1, pace: 1 },
+  '2.4': { radius: 1.35, pace: 0.7 },
+  '5': { radius: 0.75, pace: 1.5 },
+} as const;
+
+/** Wifi-netwerken van de buren (bij 'drukte in de lucht'): naast het huis en in de buurhuizen. */
+const neighbourWifi = (houseWidth: number): Vec3[] => [
+  [-2.4, 1.5, 0.5],
+  [houseWidth + 2.4, 1.5, 0.5],
+  ...neighborHouses.slice(0, 3).map(([x, z]) => [x, 1.5, z] as Vec3),
+];
+
 /** De volledige keten van KPN tot apparaat, inclusief de probleemweergave en 'Jouw huis'. */
 export function NetworkChain({ layout }: { layout: SceneLayout }) {
   const connectionType = useAppStore((s) => s.connectionType);
   const hasExtender = useAppStore((s) => s.hasExtender);
   const mode = useAppStore((s) => s.mode);
   const focusNodeId = useAppStore((s) => s.focusNodeId);
+  const wifiBand = useAppStore((s) => s.wifiBand);
   const animate = !usePrefersReducedMotion();
   const home = useHome();
   const scene = useIssueScene(home.coverage);
+  const band = bands[wifiBand ?? 'normal'];
   const { nodePositions, devicePositions, extenderPositions, shownExtenders, floorOf, shown, visibleFloor, house } = layout;
 
   const nodes = useMemo(() => getActiveNodes(connectionType, hasExtender), [connectionType, hasExtender]);
@@ -124,7 +140,13 @@ export function NetworkChain({ layout }: { layout: SceneLayout }) {
           <Highlight status={nodeStatus('modem')}>
             <Modem position={nodePositions.modem} />
           </Highlight>
-          <WifiSignal position={nodePositions.wifi} radius={6.5} animate={animate} status={nodeStatus('wifi')} />
+          <WifiSignal
+            position={nodePositions.wifi}
+            radius={6.5 * band.radius}
+            pace={band.pace}
+            animate={animate}
+            status={nodeStatus('wifi')}
+          />
         </>
       )}
       {visibleExtenders.map((position, i) => (
@@ -132,7 +154,7 @@ export function NetworkChain({ layout }: { layout: SceneLayout }) {
           <Highlight status={nodeStatus('extender')}>
             <Extender position={position} />
           </Highlight>
-          <WifiSignal position={position} radius={4} animate={animate} status={nodeStatus('extender')} />
+          <WifiSignal position={position} radius={4 * band.radius} pace={band.pace} animate={animate} status={nodeStatus('extender')} />
         </group>
       ))}
       <Devices positions={devicePositions} shown={shownDevices} statusOf={scene.partStatus} />
@@ -155,6 +177,10 @@ export function NetworkChain({ layout }: { layout: SceneLayout }) {
         <ProblemMarker key={marker.key} position={marker.position} scale={marker.scale} animate={animate} />
       ))}
       {scene.issue && <IssuePulse animate={animate} />}
+      {scene.issue?.sceneExtra === 'interference' &&
+        neighbourWifi(house.width).map((position) => (
+          <WifiSignal key={position.join(',')} position={position} radius={4.5} animate={animate} status="affected" />
+        ))}
 
       <Hotspots hotspots={layout.hotspots} activeNodeIds={nodes.map((node) => node.id)} />
       <Labels layout={layout} nodes={nodes} nodeStatus={nodeStatus} partStatus={scene.partStatus} />

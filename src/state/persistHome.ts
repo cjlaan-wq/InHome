@@ -1,5 +1,5 @@
 import { defaultHouseId, getHouse, houses } from '../content';
-import type { DeviceId, HouseId } from '../content/types';
+import type { DeviceId, HouseId, WallType } from '../content/types';
 import { maxExtenders, type HomePlacement } from './homeGeometry';
 
 // 'Jouw huis' blijft bewaard op dit apparaat (localStorage) en staat in de link,
@@ -9,12 +9,33 @@ import { maxExtenders, type HomePlacement } from './homeGeometry';
 export type HomeState = { houseId: HouseId; placement: HomePlacement };
 
 const storageKey = 'kpn-netwerk-uitleg:home';
-const params = { house: 'huis', modem: 'box', extenders: 'superwifi', laptop: 'laptop', tv: 'tv', phone: 'telefoon' } as const;
-const deviceParam: Record<DeviceId, string> = { laptop: params.laptop, tv: params.tv, phone: params.phone };
+const params = {
+  house: 'huis',
+  modem: 'box',
+  extenders: 'superwifi',
+  wiredExtenders: 'superwifikabel',
+  wired: 'kabel',
+  walls: 'muren',
+  laptop: 'laptop',
+  tv: 'tv',
+  phone: 'telefoon',
+  camera: 'camera',
+} as const;
+const deviceParam: Record<DeviceId, string> = { laptop: params.laptop, tv: params.tv, phone: params.phone, camera: params.camera };
+const devices = Object.keys(deviceParam) as DeviceId[];
+/** In de link: Nederlandse woorden voor het muurtype. */
+const wallParam: Record<WallType, string> = { light: 'licht', brick: 'baksteen', concrete: 'beton' };
 
 export const defaultPlacement = (houseId: HouseId): HomePlacement => {
   const { defaults } = getHouse(houseId);
-  return { modemRoomId: defaults.modemRoomId, extenderRoomIds: [], deviceRooms: { ...defaults.deviceRooms } };
+  return {
+    modemRoomId: defaults.modemRoomId,
+    extenderRoomIds: [],
+    wiredExtenders: [],
+    deviceRooms: { ...defaults.deviceRooms },
+    wiredDevices: [],
+    wallType: 'brick',
+  };
 };
 
 export const defaultHome = (houseId: HouseId = defaultHouseId): HomeState => ({
@@ -22,7 +43,15 @@ export const defaultHome = (houseId: HouseId = defaultHouseId): HomeState => ({
   placement: defaultPlacement(houseId),
 });
 
-type Raw = Partial<{ houseId: string; modem: string; extenders: string[]; devices: Partial<Record<DeviceId, string>> }>;
+type Raw = Partial<{
+  houseId: string;
+  modem: string;
+  extenders: string[];
+  wiredExtenders: boolean[];
+  devices: Partial<Record<DeviceId, string>>;
+  wired: string[];
+  wallType: string;
+}>;
 
 /** Neem alleen kamers over die in dit woningtype bestaan. */
 const sanitize = (raw: Raw): HomeState | null => {
@@ -30,16 +59,22 @@ const sanitize = (raw: Raw): HomeState | null => {
   if (!house) return null;
   const valid = (id?: string | null) => (id && house.rooms.some((room) => room.id === id) ? id : undefined);
   const base = defaultPlacement(house.id);
+  const extenders = (raw.extenders ?? []).map((id, i) => ({ id, wired: raw.wiredExtenders?.[i] ?? false }));
+  const keptExtenders = extenders.filter((ext) => valid(ext.id)).slice(0, maxExtenders);
+  const wallType = (['light', 'brick', 'concrete'] as WallType[]).includes(raw.wallType as WallType)
+    ? (raw.wallType as WallType)
+    : base.wallType;
   return {
     houseId: house.id,
     placement: {
       modemRoomId: valid(raw.modem) ?? base.modemRoomId,
-      extenderRoomIds: (raw.extenders ?? []).filter((id) => valid(id)).slice(0, maxExtenders),
-      deviceRooms: {
-        laptop: valid(raw.devices?.laptop) ?? base.deviceRooms.laptop,
-        tv: valid(raw.devices?.tv) ?? base.deviceRooms.tv,
-        phone: valid(raw.devices?.phone) ?? base.deviceRooms.phone,
-      },
+      extenderRoomIds: keptExtenders.map((ext) => ext.id),
+      wiredExtenders: keptExtenders.map((ext) => ext.wired),
+      deviceRooms: Object.fromEntries(
+        devices.map((id) => [id, valid(raw.devices?.[id]) ?? base.deviceRooms[id]]),
+      ) as Record<DeviceId, string>,
+      wiredDevices: devices.filter((id) => raw.wired?.includes(id)),
+      wallType,
     },
   };
 };
@@ -51,11 +86,10 @@ const fromUrl = (): HomeState | null => {
     houseId: search.get(params.house) ?? undefined,
     modem: search.get(params.modem) ?? undefined,
     extenders: search.get(params.extenders)?.split(',').filter(Boolean),
-    devices: {
-      laptop: search.get(params.laptop) ?? undefined,
-      tv: search.get(params.tv) ?? undefined,
-      phone: search.get(params.phone) ?? undefined,
-    },
+    wiredExtenders: search.get(params.wiredExtenders)?.split(',').map((v) => v === '1'),
+    devices: Object.fromEntries(devices.map((id) => [id, search.get(deviceParam[id]) ?? undefined])),
+    wired: search.get(params.wired)?.split(','),
+    wallType: (Object.keys(wallParam) as WallType[]).find((key) => wallParam[key] === search.get(params.walls)),
   });
 };
 
@@ -75,7 +109,10 @@ const fromStorage = (): HomeState | null => {
       houseId: saved.houseId,
       modem: saved.placement?.modemRoomId,
       extenders: saved.placement?.extenderRoomIds ?? legacy,
+      wiredExtenders: saved.placement?.wiredExtenders,
       devices: saved.placement?.deviceRooms,
+      wired: saved.placement?.wiredDevices,
+      wallType: saved.placement?.wallType,
     });
   } catch {
     return null;
@@ -99,11 +136,15 @@ export const saveHome = (home: HomeState) => {
   if (!isDefault(home)) {
     url.searchParams.set(params.house, home.houseId);
     url.searchParams.set(params.modem, home.placement.modemRoomId);
-    if (home.placement.extenderRoomIds.length)
-      url.searchParams.set(params.extenders, home.placement.extenderRoomIds.join(','));
-    (Object.keys(deviceParam) as DeviceId[]).forEach((id) =>
-      url.searchParams.set(deviceParam[id], home.placement.deviceRooms[id]),
-    );
+    const p = home.placement;
+    if (p.extenderRoomIds.length) {
+      url.searchParams.set(params.extenders, p.extenderRoomIds.join(','));
+      if (p.wiredExtenders.some(Boolean))
+        url.searchParams.set(params.wiredExtenders, p.wiredExtenders.map((w) => (w ? '1' : '0')).join(','));
+    }
+    devices.forEach((id) => url.searchParams.set(deviceParam[id], p.deviceRooms[id]));
+    if (p.wiredDevices.length) url.searchParams.set(params.wired, p.wiredDevices.join(','));
+    if (p.wallType !== 'brick') url.searchParams.set(params.walls, wallParam[p.wallType]);
   }
   window.history.replaceState(null, '', url);
 };

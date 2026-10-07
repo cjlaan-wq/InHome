@@ -5,6 +5,7 @@ import { useAppStore } from '../state/store';
 import { qualityWord, useHome } from '../state/useHome';
 import { SignalBars } from './SignalBars';
 import { WifiBands } from './WifiBands';
+import { Button } from './Button';
 import { useFocusOnMount } from './useFocusOnMount';
 
 /** Uitleg over één onderdeel, met vorige/volgende om de keten door te lopen. */
@@ -26,13 +27,9 @@ export function NodeDetail({ nodeId }: { nodeId: NodeId }) {
 
   return (
     <article className="flex flex-col gap-5 p-5" aria-labelledby="node-title">
-      <button
-        type="button"
-        onClick={() => focusNode(null)}
-        className="self-start rounded-lg py-1 text-sm font-medium text-kpn-green-dark hover:underline focus-visible:outline-2 focus-visible:outline-kpn-green-dark"
-      >
+      <Button variant="back" onClick={() => focusNode(null)}>
         ← {t('node.back')}
-      </button>
+      </Button>
 
       <header>
         <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">

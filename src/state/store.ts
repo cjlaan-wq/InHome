@@ -54,6 +54,9 @@ type AppState = {
   setDeviceWired: (device: DeviceId, wired: boolean) => void;
   setExtenderWired: (index: number, wired: boolean) => void;
   setWallType: (wallType: WallType) => void;
+  /** Telt op bij 'beeld herstellen': de camera vliegt terug naar het huidige standpunt. */
+  cameraNonce: number;
+  recenter: () => void;
   /** 2,4 GHz of 5 GHz uitgelicht in de scène (null = gewoon). */
   wifiBand: WifiBand | null;
   setWifiBand: (band: WifiBand | null) => void;
@@ -172,6 +175,8 @@ export const useAppStore = create<AppState>((set) => ({
       return { placement: { ...s.placement, wiredExtenders } };
     }),
   setWallType: (wallType) => set((s) => ({ placement: { ...s.placement, wallType } })),
+  cameraNonce: 0,
+  recenter: () => set((s) => ({ cameraNonce: s.cameraNonce + 1 })),
   wifiBand: null,
   setWifiBand: (wifiBand) => set({ wifiBand }),
   resetHome: () => set({ ...defaultHome(), hasExtender: false, visibleFloor: null }),

@@ -61,8 +61,15 @@ export function useHome() {
       ),
     };
 
+    /** Hoeveel apparaten goede / redelijke / zwakke wifi hebben. */
+    const deviceSummary = deviceOrder.reduce(
+      (count, id) => ({ ...count, [coverage.devices[id].quality]: count[coverage.devices[id].quality] + 1 }),
+      { good: 0, fair: 0, weak: 0 } as Record<Quality, number>,
+    );
+
     return {
       house,
+      deviceSummary,
       placement,
       hasExtender,
       coverage,

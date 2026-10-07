@@ -4,6 +4,7 @@ import { getActiveNodes, getLinks } from '../content';
 import { deviceOrder } from '../state/homeGeometry';
 import { useAppStore } from '../state/store';
 import { useHome } from '../state/useHome';
+import { useShowCoverage } from '../state/useShowCoverage';
 import { usePrefersReducedMotion } from '../app/hooks';
 import { CoverageOverlay } from './CoverageOverlay';
 import { Highlight, IssuePulse, variant } from './Highlight';
@@ -91,8 +92,7 @@ export function NetworkChain({ layout }: { layout: SceneLayout }) {
   const modemShown = shown(floorOf.modem);
   const visibleExtenders = extenderPositions.filter((_, i) => shownExtenders[i]);
   // Wifi-dekking per kamer: bij 'Jouw huis', bij uitleg over wifi en bij het probleem 'zwak signaal'.
-  const showCoverage =
-    mode === 'home' || (mode === 'explore' && focusNodeId === 'wifi') || scene.issue?.visualEffect === 'weak-signal';
+  const showCoverage = useShowCoverage();
 
   return (
     <group>

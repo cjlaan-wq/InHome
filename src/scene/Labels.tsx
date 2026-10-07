@@ -133,7 +133,8 @@ export function Labels({ layout, nodes, nodeStatus, partStatus }: LabelsProps) {
               text={part.label}
               tooltip={t('tooltip.deviceRoom', { device: part.label, roomIn: home.deviceRoomIn(part.id) })}
               target={{ nodeId: node.id, partId: part.id }}
-              active={focusNodeId === node.id}
+              // Bij een probleem zijn alleen de betrokken apparaten 'actief'; de rest blijft rustig.
+              active={focusNodeId === node.id && partStatus(part.id) !== 'dimmed'}
               hovered={isHovered(node.id, part.id)}
               status={partStatus(part.id)}
             />

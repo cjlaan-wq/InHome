@@ -1,9 +1,10 @@
 import { houses, nodes } from '../content';
 import type { HouseId, HousePreset, WallType } from '../content/types';
 import { t } from '../i18n';
-import { deviceOrder, houseSize, maxExtenders } from '../state/homeGeometry';
+import { deviceOrder, maxExtenders } from '../state/homeGeometry';
 import { extenderItem, useAppStore, type PlaceableId } from '../state/store';
 import { qualityWord, useHome } from '../state/useHome';
+import { Button } from './Button';
 import { SignalBars } from './SignalBars';
 import { useFocusOnMount } from './useFocusOnMount';
 
@@ -22,7 +23,7 @@ function WallPicker() {
   const setWallType = useAppStore((s) => s.setWallType);
   return (
     <fieldset>
-      <legend className="mb-2 font-semibold">{t('home.walls')}</legend>
+      <legend className="mb-2 text-sm font-medium">{t('home.walls')}</legend>
       <div className="flex gap-1 rounded-xl bg-scene p-1">
         {wallOptions.map((option) => (
           <label
@@ -59,138 +60,177 @@ export function HomeEditor() {
   const setDeviceWired = useAppStore((s) => s.setDeviceWired);
 
   return (
-    <article className="flex flex-col gap-6 p-5" aria-labelledby="home-title">
-      <button
-        type="button"
-        onClick={backToExplore}
-        className="self-start rounded-lg py-1 text-sm font-medium text-kpn-green-dark hover:underline focus-visible:outline-2 focus-visible:outline-kpn-green-dark"
-      >
-        ← {t('home.done')}
-      </button>
+    <article className="flex min-h-full flex-col" aria-labelledby="home-title">
+      <div className="flex flex-1 flex-col gap-7 p-5">
+        <Button variant="back" onClick={backToExplore}>
+          ← {t('home.back')}
+        </Button>
 
-      <header>
-        <h2 id="home-title" ref={heading} tabIndex={-1} className="text-xl font-bold outline-none">
-          {t('home.title')}
-        </h2>
-        <p className="mt-1 text-sm text-ink-muted">{t('home.intro')}</p>
-      </header>
+        <header>
+          <h2 id="home-title" ref={heading} tabIndex={-1} className="text-xl font-bold outline-none">
+            {t('home.title')}
+          </h2>
+          <p className="mt-1 text-sm text-ink-muted">{t('home.intro')}</p>
+        </header>
 
-      <fieldset>
-        <legend className="mb-2 font-semibold">{t('home.type')}</legend>
-        <div className="grid grid-cols-3 gap-2">
-          {houses.map((option) => (
-            <label
-              key={option.id}
-              className="flex cursor-pointer flex-col items-center gap-1 rounded-xl border border-line p-2 text-center text-xs has-checked:border-kpn-green-dark has-checked:bg-scene has-checked:ring-1 has-checked:ring-kpn-green-dark has-focus-visible:outline-2 has-focus-visible:outline-kpn-green-dark"
-            >
-              <input
-                type="radio"
-                name="house-type"
-                value={option.id}
-                checked={house.id === option.id}
-                onChange={() => setHouse(option.id)}
-                className="sr-only"
-              />
-              <HouseIcon id={option.id} />
-              <span className="font-medium text-ink">{option.label}</span>
-              <span className="text-ink-muted">{option.description}</span>
+        <Step n={1} title={t('home.stepHouse')}>
+          <fieldset>
+            <legend className="sr-only">{t('home.type')}</legend>
+            <div className="grid grid-cols-3 gap-2">
+              {houses.map((option) => (
+                <label
+                  key={option.id}
+                  className="flex cursor-pointer flex-col items-center gap-1 rounded-xl border border-line p-2 text-center text-xs has-checked:border-kpn-green-dark has-checked:bg-scene has-checked:ring-1 has-checked:ring-kpn-green-dark has-focus-visible:outline-2 has-focus-visible:outline-kpn-green-dark"
+                >
+                  <input
+                    type="radio"
+                    name="house-type"
+                    value={option.id}
+                    checked={house.id === option.id}
+                    onChange={() => setHouse(option.id)}
+                    className="sr-only"
+                  />
+                  <HouseIcon id={option.id} />
+                  <span className="font-medium text-ink">{option.label}</span>
+                  <span className="text-ink-muted">{option.description}</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+          <WallPicker />
+        </Step>
+
+        <Step n={2} title={t('home.stepWifi')}>
+          <div className="grid grid-cols-[6rem_1fr] items-center gap-2 text-sm">
+            <label htmlFor="room-modem" className="font-medium">
+              {t('home.modemLabel')}
             </label>
-          ))}
-        </div>
-      </fieldset>
-
-      <WallPicker />
-
-      <FloorPicker house={house} />
-
-      <section aria-labelledby="modem-heading" className="flex flex-col gap-2">
-        <h3 id="modem-heading" className="font-semibold">
-          {t('home.modem')}
-        </h3>
-        <RoomSelect house={house} item="modem" label={t('home.modem')} value={placement.modemRoomId} onChange={place} />
-      </section>
-
-      <Extenders />
-
-      <section aria-labelledby="devices-heading" className="flex flex-col gap-2">
-        <h3 id="devices-heading" className="font-semibold">
-          {t('home.devices')}
-        </h3>
-        {deviceOrder.map((id) => (
-          <div key={id} className="grid grid-cols-[6rem_1fr_auto] items-center gap-2 text-sm">
-            <label htmlFor={`room-${id}`}>{home.deviceLabel(id)}</label>
-            <RoomSelect house={house} item={id} label={home.deviceLabel(id)} value={placement.deviceRooms[id]} onChange={place} />
-            {wireable.has(id) ? (
-              <label className="flex items-center gap-1.5 whitespace-nowrap text-xs">
-                <input
-                  type="checkbox"
-                  checked={placement.wiredDevices.includes(id)}
-                  onChange={(e) => setDeviceWired(id, e.target.checked)}
-                  aria-label={t('home.wiredLabel', { device: home.deviceLabel(id) })}
-                  className="size-4 accent-kpn-green-dark"
-                />
-                {t('home.wired')}
-              </label>
-            ) : (
-              <span />
-            )}
+            <RoomSelect house={house} item="modem" label={t('home.modem')} value={placement.modemRoomId} onChange={place} />
           </div>
-        ))}
-        <p className="text-xs text-ink-muted">{t('home.dragHint')}</p>
-      </section>
+          <Extenders />
+        </Step>
 
-      <section aria-labelledby="coverage-heading" className="flex flex-col gap-3">
-        <h3 id="coverage-heading" className="font-semibold">
-          {t('home.coverage')}
-        </h3>
-        <ul className="flex flex-col gap-1 text-sm">
-          {house.rooms.map((room) => {
-            const reading = coverage.rooms[room.id];
-            const devicesHere = deviceOrder.filter((id) => placement.deviceRooms[id] === room.id);
-            return (
-              <li key={room.id} className="flex items-center justify-between gap-2 rounded-lg bg-scene px-3 py-2">
-                <span>
-                  <span className="font-medium">{room.label}</span>
-                  {devicesHere.length > 0 && (
-                    <span className="text-ink-muted">
-                      {' · '}
-                      {devicesHere
-                        .map((id) =>
-                          placement.wiredDevices.includes(id) ? `${home.deviceLabel(id)} (${t('home.servedByCable')})` : home.deviceLabel(id),
+        <Step n={3} title={t('home.stepDevices')}>
+          {deviceOrder.map((id) => (
+            <div key={id} className="grid grid-cols-[6rem_1fr_auto] items-center gap-2 text-sm">
+              <label htmlFor={`room-${id}`} className="font-medium">
+                {home.deviceLabel(id)}
+              </label>
+              <RoomSelect house={house} item={id} label={home.deviceLabel(id)} value={placement.deviceRooms[id]} onChange={place} />
+              {wireable.has(id) ? (
+                <label className="flex items-center gap-1.5 whitespace-nowrap text-xs">
+                  <input
+                    type="checkbox"
+                    checked={placement.wiredDevices.includes(id)}
+                    onChange={(e) => setDeviceWired(id, e.target.checked)}
+                    aria-label={t('home.wiredLabel', { device: home.deviceLabel(id) })}
+                    className="size-4 accent-kpn-green-dark"
+                  />
+                  {t('home.wired')}
+                </label>
+              ) : (
+                <span />
+              )}
+            </div>
+          ))}
+          <p className="text-xs text-ink-muted">{t('home.dragHint')}</p>
+        </Step>
+
+        <section id="home-result" aria-labelledby="coverage-heading" className="flex scroll-mt-4 flex-col gap-3 border-t border-line pt-6">
+          <h3 id="coverage-heading" className="text-lg font-semibold">
+            {t('home.coverage')}
+          </h3>
+          <Advice />
+          <ul className="flex flex-col gap-1 text-sm">
+            {house.rooms.map((room) => {
+              const reading = coverage.rooms[room.id];
+              const devicesHere = deviceOrder.filter((id) => placement.deviceRooms[id] === room.id);
+              return (
+                <li key={room.id} className="flex items-center justify-between gap-2 rounded-lg bg-scene px-3 py-2">
+                  <span>
+                    <span className="font-medium">{room.label}</span>
+                    {devicesHere.length > 0 && (
+                      <span className="text-ink-muted">
+                        {' · '}
+                        {devicesHere
+                          .map((id) =>
+                            placement.wiredDevices.includes(id) ? `${home.deviceLabel(id)} (${t('home.servedByCable')})` : home.deviceLabel(id),
+                          )
+                          .join(', ')}
+                      </span>
+                    )}
+                  </span>
+                  <span className="flex shrink-0 items-center gap-2 text-ink-muted">
+                    {qualityWord(reading.quality)}
+                    {hasExtender && reading.servedBy === 'extender' && (
+                      <span className="text-xs">
+                        (
+                        {placement.extenderRoomIds.length > 1
+                          ? t('home.servedByExtenderN', { n: (reading.extenderIndex ?? 0) + 1 })
+                          : t('home.servedByExtender')}
                         )
-                        .join(', ')}
-                    </span>
-                  )}
-                </span>
-                <span className="flex shrink-0 items-center gap-2 text-ink-muted">
-                  {qualityWord(reading.quality)}
-                  {hasExtender && reading.servedBy === 'extender' && (
-                    <span className="text-xs">
-                      (
-                      {placement.extenderRoomIds.length > 1
-                        ? t('home.servedByExtenderN', { n: (reading.extenderIndex ?? 0) + 1 })
-                        : t('home.servedByExtender')}
-                      )
-                    </span>
-                  )}
-                  <SignalBars quality={reading.quality} />
-                </span>
-              </li>
-            );
-          })}
-        </ul>
-        <Advice />
-        <p className="text-xs text-ink-muted">{t('home.coverageNote')}</p>
-      </section>
+                      </span>
+                    )}
+                    <SignalBars quality={reading.quality} />
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+          <p className="text-xs text-ink-muted">{t('home.coverageNote')}</p>
+          <button
+            type="button"
+            onClick={resetHome}
+            className="self-start text-sm text-ink-muted underline underline-offset-2 hover:text-ink focus-visible:outline-2 focus-visible:outline-kpn-green-dark"
+          >
+            {t('home.reset')}
+          </button>
+        </section>
+      </div>
 
-      <button
-        type="button"
-        onClick={resetHome}
-        className="self-start text-sm text-ink-muted underline underline-offset-2 hover:text-ink focus-visible:outline-2 focus-visible:outline-kpn-green-dark"
-      >
-        {t('home.reset')}
-      </button>
+      {/* Vaste balk onderaan: het effect van elke keuze is altijd zichtbaar, ook op mobiel. */}
+      <div className="sticky bottom-0 flex items-center gap-3 border-t border-line bg-surface p-4">
+        <a
+          href="#home-result"
+          onClick={(e) => {
+            e.preventDefault();
+            document.getElementById('home-result')?.scrollIntoView({ block: 'start' });
+          }}
+          className="min-w-0 flex-1 rounded-lg text-sm focus-visible:outline-2 focus-visible:outline-kpn-green-dark"
+          aria-live="polite"
+        >
+          <span className="block text-xs text-ink-muted">{t('home.summaryLabel')}</span>
+          <span className="flex flex-wrap items-center gap-x-3">
+            {(['good', 'fair', 'weak'] as const)
+              .filter((q) => home.deviceSummary[q] > 0)
+              .map((q) => (
+                <span key={q} className="flex items-center gap-1 font-medium">
+                  <SignalBars quality={q} />
+                  {t('home.summaryCount', { count: home.deviceSummary[q], quality: t(`quality.${q}`) })}
+                </span>
+              ))}
+          </span>
+        </a>
+        <Button variant="primary" onClick={backToExplore}>
+          {t('home.done')}
+        </Button>
+      </div>
     </article>
+  );
+}
+
+/** Genummerde stap in 'Jouw huis'. */
+function Step({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
+  return (
+    <section aria-labelledby={`home-step-${n}`} className="flex flex-col gap-3">
+      <h3 id={`home-step-${n}`} className="flex items-center gap-2 font-semibold">
+        <span aria-hidden="true" className="flex size-6 items-center justify-center rounded-full bg-kpn-green-dark text-xs text-white">
+          {n}
+        </span>
+        {title}
+      </h3>
+      {children}
+    </section>
   );
 }
 
@@ -208,9 +248,9 @@ function Extenders() {
 
   return (
     <section aria-labelledby="extenders-heading" className="flex flex-col gap-2">
-      <h3 id="extenders-heading" className="font-semibold">
+      <h4 id="extenders-heading" className="text-sm font-medium">
         {t('home.extenders')}
-      </h3>
+      </h4>
       {ids.length === 0 && <p className="text-sm text-ink-muted">{t('home.extendersNone')}</p>}
       {ids.map((roomId, i) => {
         const feed = coverage.extenderFeeds[i] ?? -1;
@@ -323,13 +363,9 @@ function Advice() {
 
 function ApplyButton({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="self-start rounded-lg border border-kpn-green-dark px-3 py-1.5 font-medium text-kpn-green-dark hover:bg-scene focus-visible:outline-2 focus-visible:outline-kpn-green-dark"
-    >
+    <Button variant="secondary" onClick={onClick} className="self-start">
       {children}
-    </button>
+    </Button>
   );
 }
 
@@ -368,38 +404,6 @@ function RoomSelect({ house, item, label, value, onChange }: RoomSelectProps) {
             </optgroup>
           ))}
     </select>
-  );
-}
-
-/** Verdieping bekijken: hogere verdiepingen verbergen om in de kamers eronder te kijken. */
-function FloorPicker({ house }: { house: HousePreset }) {
-  const visibleFloor = useAppStore((s) => s.visibleFloor);
-  const setVisibleFloor = useAppStore((s) => s.setVisibleFloor);
-  const { floors } = houseSize(house);
-  if (floors < 2) return null;
-  const options: (number | null)[] = [null, ...Array.from({ length: floors }, (_, i) => i)];
-
-  return (
-    <fieldset>
-      <legend className="mb-2 text-sm font-medium text-ink-muted">{t('home.floorLabel')}</legend>
-      <div className="flex flex-wrap gap-1 rounded-xl bg-scene p-1">
-        {options.map((floor) => (
-          <label
-            key={floor ?? 'all'}
-            className="flex-1 cursor-pointer whitespace-nowrap rounded-lg px-2 py-1.5 text-center text-xs font-medium has-checked:bg-surface has-checked:shadow-sm has-focus-visible:outline-2 has-focus-visible:outline-kpn-green-dark"
-          >
-            <input
-              type="radio"
-              name="visible-floor"
-              checked={visibleFloor === floor}
-              onChange={() => setVisibleFloor(floor)}
-              className="sr-only"
-            />
-            {floor === null ? t('home.floorAll') : floorLabel(floor)}
-          </label>
-        ))}
-      </div>
-    </fieldset>
   );
 }
 

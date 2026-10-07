@@ -115,8 +115,12 @@ export type Fix = {
  */
 export type VisualEffect = 'blocked' | 'slow' | 'weak-signal' | 'device-only' | 'unstable';
 
+/** Groep in de probleemlijst (zie categories.ts). */
+export type IssueCategoryId = 'offline' | 'one-place' | 'unstable';
+
 export type Issue = {
   id: string;
+  category: IssueCategoryId;
   title: string; // zoals de klant het zelf zou omschrijven
   symptom: string; // herkenbaar symptoom in één zin
   connectionTypes: ConnectionType[];

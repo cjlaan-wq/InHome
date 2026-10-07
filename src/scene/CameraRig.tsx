@@ -49,7 +49,9 @@ export function CameraRig({ layout }: { layout: SceneLayout }) {
       ? layout.cameraFocus[focusNodeId]
       : overview;
   // Alleen opnieuw vliegen als het doel echt verandert (niet bij elke herberekening van de layout).
-  const focusKey = JSON.stringify(focus);
+  // 'Beeld herstellen' (cameraNonce) telt ook als nieuw doel.
+  const cameraNonce = useAppStore((s) => s.cameraNonce);
+  const focusKey = JSON.stringify({ ...focus, cameraNonce });
 
   const goal = useMemo(() => {
     const focus = JSON.parse(focusKey) as CameraFocus;

@@ -1,13 +1,14 @@
 import { useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { fillTemplate, getActiveNodes, issueStepCount } from '../content';
+import { fillTemplate, getActiveNodes, issueCategories, issueStepCount } from '../content';
 import type { Fix, Issue } from '../content/types';
 import { t } from '../i18n';
 import { affectedParts } from '../state/issueStatus';
 import { useAppStore } from '../state/store';
 import { useHome } from '../state/useHome';
 import { timings } from '../theme';
-import { ExternalIcon, WarningIcon } from './Icons';
+import { Button } from './Button';
+import { CategoryIcon, ExternalIcon, WarningIcon } from './Icons';
 import { useFocusOnMount } from './useFocusOnMount';
 import { BandwidthTool } from './BandwidthTool';
 
@@ -33,18 +34,15 @@ export function IssueView({ issue }: { issue: Issue }) {
   return (
     <article className="flex min-h-full flex-col" aria-labelledby="issue-title">
       <div className="flex flex-1 flex-col gap-4 p-5 pt-3 md:gap-5 md:pt-5">
-        <button
-          type="button"
-          onClick={backToExplore}
-          className="self-start rounded-lg py-1 text-sm font-medium text-kpn-green-dark hover:underline focus-visible:outline-2 focus-visible:outline-kpn-green-dark"
-        >
+        <Button variant="back" onClick={backToExplore}>
           ← {t('issue.back')}
-        </button>
+        </Button>
 
         <header>
           {/* Op mobiel compact, zodat de stap zelf boven de vouw staat. */}
-          <p className="hidden text-xs font-medium uppercase tracking-wide text-ink-muted md:block">
-            {t('issues.heading')}
+          <p className="hidden items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-ink-muted md:flex">
+            <CategoryIcon id={issue.category} className="size-4 text-kpn-green-dark" />
+            {issueCategories.find((c) => c.id === issue.category)?.label}
           </p>
           <h2 id="issue-title" ref={title} tabIndex={-1} className="text-lg font-bold outline-none md:mt-1 md:text-xl">
             {issue.title}
@@ -78,21 +76,12 @@ export function IssueView({ issue }: { issue: Issue }) {
 
       {/* Navigatie onderaan, binnen bereik van de duim; blijft zichtbaar tijdens scrollen. */}
       <nav className="sticky bottom-0 grid grid-cols-2 gap-2 border-t border-line bg-surface p-4">
-        <button
-          type="button"
-          onClick={() => setStep(activeStep - 1)}
-          disabled={activeStep === 0}
-          className="rounded-xl border border-line px-4 py-3 font-medium hover:border-kpn-green disabled:invisible focus-visible:outline-2 focus-visible:outline-kpn-green-dark"
-        >
+        <Button variant="quiet" onClick={() => setStep(activeStep - 1)} disabled={activeStep === 0} className="py-3 disabled:invisible">
           ← {t('issue.previous')}
-        </button>
-        <button
-          type="button"
-          onClick={() => (isLast ? backToExplore() : setStep(activeStep + 1))}
-          className="rounded-xl bg-kpn-green-dark px-4 py-3 font-medium text-white hover:bg-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-kpn-green-dark"
-        >
+        </Button>
+        <Button variant="primary" onClick={() => (isLast ? backToExplore() : setStep(activeStep + 1))} className="py-3">
           {isLast ? t('issue.done') : activeStep === issue.steps.length - 1 ? t('issue.toFixes') : t('issue.next')} →
-        </button>
+        </Button>
       </nav>
     </article>
   );
@@ -223,31 +212,29 @@ function FixCard({ fix, index, fill }: { fix: Fix; index: number; fill: (text: s
         ))}
       </ol>
       {fix.demo === 'extender' && (
-        <button
-          type="button"
+        <Button
+          variant="secondary"
+          className="mt-3"
           // Zet het SuperWifi-punt meteen op de beste plek in jouw huis.
           onClick={() =>
-            hasExtender
-              ? setHasExtender(false)
-              : addExtender(coverage.bestExtenderRoomId ?? house.defaults.extenderRoomId)
+            hasExtender ? setHasExtender(false) : addExtender(coverage.bestExtenderRoomId ?? house.defaults.extenderRoomId)
           }
           aria-pressed={hasExtender}
-          className="mt-3 rounded-lg border border-kpn-green-dark px-3 py-2 text-sm font-medium text-kpn-green-dark hover:bg-scene focus-visible:outline-2 focus-visible:outline-kpn-green-dark"
         >
           {hasExtender ? t('issue.demoHide') : t('issue.demoShow')}
-        </button>
+        </Button>
       )}
       {wireDevice && (
-        <button
-          type="button"
+        <Button
+          variant="secondary"
+          className="mt-3"
           // Sluit het apparaat (in de tekening) aan met een netwerkkabel, of haal de kabel weer weg.
           onClick={() => setDeviceWired(wireDevice, !isWired)}
           aria-pressed={isWired}
           aria-label={`${isWired ? t('issue.demoWireHide') : t('issue.demoWireShow')}: ${deviceLabel(wireDevice)}`}
-          className="mt-3 rounded-lg border border-kpn-green-dark px-3 py-2 text-sm font-medium text-kpn-green-dark hover:bg-scene focus-visible:outline-2 focus-visible:outline-kpn-green-dark"
         >
           {isWired ? t('issue.demoWireHide') : t('issue.demoWireShow')}
-        </button>
+        </Button>
       )}
       {fix.cta && <ExternalLink href={fix.cta.href} label={fix.cta.label} />}
     </li>

@@ -6,6 +6,7 @@ import { issues } from './issues';
 export * from './types';
 export { nodes, links, issues };
 export { houses, getHouse, defaultHouseId } from './houses';
+export { issueCategories } from './categories';
 
 const appliesTo = (type: ConnectionType) => (item: { connectionTypes: ConnectionType[] }) =>
   item.connectionTypes.includes(type);

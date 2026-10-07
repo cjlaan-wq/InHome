@@ -19,6 +19,7 @@ export const issues: Issue[] = [
   // CONCEPT – valideren met KPN Service
   {
     id: 'no-internet',
+    category: 'offline',
     title: 'Ik heb helemaal geen internet',
     symptom: 'Geen enkel apparaat in huis maakt verbinding met internet.',
     connectionTypes: ['fiber', 'dsl'],
@@ -87,6 +88,7 @@ export const issues: Issue[] = [
   // CONCEPT – valideren met KPN Service
   {
     id: 'slow-wifi-room',
+    category: 'one-place',
     title: 'Mijn wifi is traag in één kamer',
     symptom: 'Dichtbij de KPN Box gaat het goed, maar in een kamer verderop is het traag.',
     connectionTypes: ['fiber', 'dsl'],
@@ -149,6 +151,7 @@ export const issues: Issue[] = [
   // CONCEPT – valideren met KPN Service
   {
     id: 'outage-area',
+    category: 'offline',
     title: 'Er is een storing in mijn buurt',
     symptom: 'Alles werkte, en ineens doet niets het meer. Ook de buren hebben geen internet.',
     connectionTypes: ['fiber', 'dsl'],
@@ -198,6 +201,7 @@ export const issues: Issue[] = [
   // CONCEPT – valideren met KPN Service
   {
     id: 'one-device',
+    category: 'one-place',
     title: 'Eén apparaat maakt geen verbinding',
     symptom: 'Alles werkt, behalve één apparaat. Bijvoorbeeld je laptop.',
     connectionTypes: ['fiber', 'dsl'],
@@ -243,6 +247,7 @@ export const issues: Issue[] = [
   // CONCEPT – valideren met KPN Service
   {
     id: 'tv-stutter',
+    category: 'unstable',
     title: 'Het tv-beeld hapert',
     symptom: 'Het beeld van KPN TV hapert, wordt blokkerig of blijft even hangen.',
     connectionTypes: ['fiber', 'dsl'],
@@ -301,6 +306,7 @@ export const issues: Issue[] = [
   // CONCEPT – valideren met KPN Service
   {
     id: 'busy-home',
+    category: 'unstable',
     title: 'Alles wordt traag als iedereen online is',
     symptom: 'Meestal gaat het prima, maar als het hele huis streamt, gamet en belt, wordt alles traag.',
     connectionTypes: ['fiber', 'dsl'],
@@ -352,6 +358,7 @@ export const issues: Issue[] = [
   // CONCEPT – valideren met KPN Service
   {
     id: 'video-calls',
+    category: 'unstable',
     title: 'Videobellen hapert',
     symptom: 'Bij videobellen of thuiswerken valt het beeld weg, of klink je robotachtig.',
     connectionTypes: ['fiber', 'dsl'],
@@ -412,6 +419,7 @@ export const issues: Issue[] = [
   // CONCEPT – valideren met KPN Service
   {
     id: 'neighbours-wifi',
+    category: 'unstable',
     title: "Mijn wifi is wisselend, vooral 's avonds",
     symptom: 'Je wifi is soms prima en soms ineens slecht, ook dicht bij je KPN Box. Je woont tussen veel buren.',
     connectionTypes: ['fiber', 'dsl'],

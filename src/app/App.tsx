@@ -5,6 +5,7 @@ import { t } from '../i18n';
 import { layout } from '../theme';
 import { BottomSheet } from '../ui/BottomSheet';
 import { Panel } from '../ui/Panel';
+import { StageOverlay } from '../ui/StageOverlay';
 import { saveHome } from '../state/persistHome';
 import { useAppStore } from '../state/store';
 import { hasWebGL, useIsDesktop } from './hooks';
@@ -35,6 +36,7 @@ function Scene3D() {
       >
         <Scene />
       </Suspense>
+      <StageOverlay />
     </>
   );
 }
